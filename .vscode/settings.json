@@ -1,0 +1,55 @@
+{
+	"files.exclude": {
+		".*": false,
+		"*.json": false,
+		"build": false,
+		"build-web": false,
+		"README.md": false,
+		"LICENSE": false,
+		"CODEOWNERS": false,
+		"vcpkg": false,
+		"vcpkg_installed": false
+	},
+	"files.insertFinalNewline": true,
+	"editor.tabSize": 2,
+	"editor.detectIndentation": false,
+	"editor.insertSpaces": false,
+	"editor.formatOnSave": true,
+	"editor.formatOnPaste": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.eslint": "explicit",
+		"eslint.autoFixOnSave": "explicit"
+	},
+	"eslint.format.enable": true,
+	"eslint.lintTask.enable": true,
+	"javascript.format.enable": false,
+	"typescript.format.enable": false,
+	"files.associations": {
+		"*.tup": "markdown",
+		"*.h": "c"
+	},
+	"cSpell.words": [
+		"Bezier",
+		"CHECKVERSION",
+		"cimgui",
+		"fourareen",
+		"Framebuffer",
+		"Gamepad",
+		"GFLW",
+		"glfw",
+		"mipmap",
+		"multisample",
+		"multisampled",
+		"Renderable",
+		"specularity",
+		"stbi",
+		"texcoords",
+		"TINYOBJ",
+		"Uncaptured",
+		"viewports",
+		"webgpu",
+		"wgpu",
+		"WGSL",
+		"Workgroups"
+	],
+}
