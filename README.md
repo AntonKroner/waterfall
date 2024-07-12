@@ -4,6 +4,7 @@ Game engine
 ## Requirements
  - git
  - python
+ - zip
  - cmake
 
 ## build
