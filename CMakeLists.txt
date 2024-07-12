@@ -24,7 +24,7 @@ set_target_properties(waterfall.exe PROPERTIES
 target_compile_definitions(waterfall.exe PRIVATE
     RESOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources"
 )
-set(glfw3_DIR "./vcpkg_installed/x64-linux/share/glfw3")
+set(glfw3_DIR ./vcpkg_installed/x64-linux/share/glfw3)
 find_package(glfw3 CONFIG REQUIRED)
 include_directories("./library")
 if (NOT EMSCRIPTEN)
