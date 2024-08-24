@@ -1,0 +1,75 @@
+{
+	"name": "@utily/worker-template",
+	"version": "0.0.3",
+	"description": "TypeScript template for stencil and Cloudflare workers.",
+	"private": true,
+	"repository": "https://github.com/worker-stencil-template/app/",
+	"type": "module",
+	"bugs": {
+		"url": "https://github.com/worker-stencil-template/app/issues/"
+	},
+	"homepage": "https://github.com/worker-stencil-template/app/",
+	"main": "./dist/index.mjs",
+	"module": "./dist/index.mjs",
+	"jest": {
+		"transform": {
+			"^.+\\.(j|t)sx?$": [
+				"ts-jest",
+				{
+					"tsconfig": "./tsconfig.test.json",
+					"useESM": true
+				}
+			]
+		},
+		"extensionsToTreatAsEsm": [
+			".ts"
+		],
+		"transformIgnorePatterns": [
+			"<rootDir>/node_modules/(?!(cryptly|authly|isoly|gracely|cloudly-http|cloudly-router|cloudly-formdata)/.*)"
+		],
+		"testEnvironment": "node",
+		"testRegex": "((\\.|/)(test|spec))(\\.|\\/.+)(jsx?|tsx?)$",
+		"testPathIgnorePatterns": [
+			"node_modules/",
+			"dist/"
+		],
+		"collectCoverageFrom": [
+			"**/*.{ts,tsx,js,jsx}",
+			"!**/node_modules/**",
+			"!**/dist/**"
+		]
+	},
+	"scripts": {
+		"lint": "eslint '**/*.{ts,tsx}'",
+		"fix": "eslint '**/*.{ts,tsx}' --fix",
+		"clean": "rimraf dist node_modules coverage",
+		"test": "npm run build && node --experimental-vm-modules node_modules/.bin/jest --maxWorkers=2",
+		"build": "stencil build",
+		"start": "(npm run start:ui) & (npm run start:api) && kill $!",
+		"start:api": "NODE_ENV=preview && wrangler pages dev",
+		"start:ui": "export NODE_ENV=preview && stencil build --dev --watch",
+		"kill": "(ps -aux | grep rollup | grep watch | awk '{print $2}' | xargs kill $1) & (lsof -i tcp:8787 | grep 8787 | awk '{print $2}' | xargs kill $1) & (lsof -i tcp:3333 | grep 3333 | awk '{print $2}' | xargs kill $1)"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "4.20240821.1",
+		"@types/jest": "^29.5.12",
+		"@typescript-eslint/eslint-plugin": "6.18.1",
+		"@typescript-eslint/parser": "6.18.1",
+		"eslint": "8.56.0",
+		"eslint-plugin-prettierx": "github:utily/eslint-plugin-prettierx#utily-20231004",
+		"eslint-plugin-simple-import-sort": "12.1.1",
+		"jest": "29.7.0",
+		"jest-cli": "29.7.0",
+		"prettierx": "github:utily/prettierx#utily-20231004",
+		"rimraf": "6.0.1",
+		"ts-jest": "29.2.5",
+		"tslib": "2.7.0",
+		"typescript": "5.5.4"
+	},
+	"dependencies": {
+		"cloudly-http": "0.2.0-alpha.18",
+		"cloudly-router": "0.2.0-alpha.17",
+		"cloudly-storage": "0.10.8",
+		"gracely": "2.0.8"
+	}
+}

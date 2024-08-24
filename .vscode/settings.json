@@ -1,6 +1,6 @@
 {
 	"files.exclude": {
-		".*": false,
+		"**/.*": false,
 		"*.json": false,
 		"build": false,
 		"build-web": false,
@@ -10,7 +10,6 @@
 		"vcpkg": false,
 		"vcpkg_installed": false
 	},
-	"files.insertFinalNewline": true,
 	"editor.tabSize": 2,
 	"editor.detectIndentation": false,
 	"editor.insertSpaces": false,
@@ -22,6 +21,7 @@
 	},
 	"eslint.format.enable": true,
 	"eslint.lintTask.enable": true,
+	"files.insertFinalNewline": true,
 	"javascript.format.enable": false,
 	"typescript.format.enable": false,
 	"files.associations": {
@@ -32,11 +32,13 @@
 		"Bezier",
 		"CHECKVERSION",
 		"cimgui",
+		"cloudly",
 		"fourareen",
 		"Framebuffer",
 		"Gamepad",
 		"GFLW",
 		"glfw",
+		"gracely",
 		"mipmap",
 		"multisample",
 		"multisampled",

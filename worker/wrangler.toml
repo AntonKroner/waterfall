@@ -1,0 +1,13 @@
+compatibility_date = "2024-07-22"
+name = "waterfall"
+main = "./index.ts"
+upload_source_maps = true
+workers_dev = true
+
+vars = { environment = "local" }
+
+[durable_objects]
+bindings = [{ name = "realmNamespace", class_name = "Realm" }]
+
+[dev]
+port = 8787

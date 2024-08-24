@@ -48,3 +48,8 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+# worker
+dist
+node_modules
+.miniflare
+.wrangler
