@@ -26,8 +26,6 @@ export class Realm implements DurableObject {
 	async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
 		const sockets = this.state.getWebSockets()
 		const id = socket.deserializeAttachment()
-		console.log("sockets: ", sockets)
-
 		console.log("message: ", message)
 		sockets.map(s => s.send(`${id}: ${message}`))
 	}

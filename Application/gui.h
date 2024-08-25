@@ -7,12 +7,14 @@
 #include "cimgui/cimgui_impl_wgpu.h"
 #include "cimgui/cimgui_impl_glfw.h"
 #include "./Lightning.h"
+#include "./gui/Socket.h"
 
 bool Application_gui_attach(
   GLFWwindow* window,
   WGPUDevice device,
   WGPUTextureFormat depthFormat) {
   // CIMGUI_CHECKVERSION();
+  doTheSocket();
   ImGui_CreateContext(0);
   ImGui_GetIO();
   cImGui_ImplGlfw_InitForOther(window, true);
