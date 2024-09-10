@@ -15,6 +15,7 @@ add_executable(waterfall.exe
 	library/linear/Matrix.c
 	library/linear/VectorN.c
 	library/linear/Vector.c
+	library/rxi/Array.c
 )
 set_target_properties(waterfall.exe PROPERTIES
     C_STANDARD 23

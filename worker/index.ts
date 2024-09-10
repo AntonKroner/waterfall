@@ -21,13 +21,29 @@ export default {
 	},
 }
 export class Realm implements DurableObject {
+	#messages?: string[]
+	get messages(): Promise<string[]> {
+		return Promise.resolve().then(
+			async () => this.#messages ?? (await this.state.storage.get<string[]>("messages")) ?? []
+		)
+	}
+	set messages(message: string) {
+		this.messages.then(m => {
+			m.length > 15 && m.shift()
+			m.push(message)
+			this.state.storage.put("messages", m)
+		})
+	}
+
 	constructor(private readonly state: DurableObjectState, readonly environment: Environment) {}
 
 	async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
 		const sockets = this.state.getWebSockets()
 		const id = socket.deserializeAttachment()
 		console.log("message: ", message)
-		sockets.map(s => s.send(`${id}: ${message}`))
+		const post = `${id}: ${message}`
+		this.messages = post
+		sockets.map(s => s.send(post))
 	}
 	async webSocketClose(socket: WebSocket, code: number, reason: string, clean: boolean): Promise<void> {
 		console.log("socket closed with: ", code, reason, clean)
@@ -45,6 +61,7 @@ export class Realm implements DurableObject {
 			const [client, server] = Object.values(new WebSocketPair())
 			this.state.acceptWebSocket(server)
 			server.serializeAttachment(Math.floor(Math.random() * 128).toString(16))
+			;(await this.messages).map(m => server.send(m))
 			result = new Response(null, { status: 101, webSocket: client })
 		}
 		return result

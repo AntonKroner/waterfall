@@ -1,7 +1,10 @@
 {
 	"files.exclude": {
 		"**/.*": false,
+		"worker/.*": true,
+		"worker/node_modules": true,
 		"*.json": false,
+		"worker/*.json": true,
 		"build": false,
 		"build-web": false,
 		"README.md": false,
