@@ -60,7 +60,8 @@
 		"prettierx": "github:utily/prettierx#utily-20231004",
 		"rimraf": "6.0.1",
 		"tslib": "2.7.0",
-		"typescript": "5.5.4"
+		"typescript": "5.5.4",
+		"wrangler": "3.78.2"
 	},
 	"dependencies": {
 		"cloudly-http": "0.2.0-alpha.18",
