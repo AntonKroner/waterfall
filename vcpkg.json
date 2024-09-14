@@ -11,6 +11,9 @@
 			"features": [
 				"glfw-binding"
 			]
+		},
+		{
+			"name": "libwebsockets"
 		}
 	]
 }

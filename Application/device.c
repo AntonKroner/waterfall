@@ -69,10 +69,7 @@ static void onDeviceError(WGPUErrorType type, const char* message, void* /* pUse
 WGPUDevice Application_device_request(WGPUAdapter adapter) {
   WGPUSupportedLimits supported = { .nextInChain = 0, .limits = { 0 } };
   wgpuAdapterGetLimits(adapter, &supported);
-  WGPURequiredLimits required = {
-    .nextInChain = 0,
-    .limits = supported.limits,
-  };
+  WGPURequiredLimits required = { .nextInChain = 0, .limits = supported.limits };
   limitsSet(&required, supported);
   WGPUDeviceDescriptor descriptor = {
     .nextInChain = 0,

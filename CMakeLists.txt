@@ -15,6 +15,7 @@ add_executable(waterfall.exe
 	library/linear/Matrix.c
 	library/linear/VectorN.c
 	library/linear/Vector.c
+	library/rxi/Array.c
 )
 set_target_properties(waterfall.exe PROPERTIES
     C_STANDARD 23
@@ -26,6 +27,8 @@ target_compile_definitions(waterfall.exe PRIVATE
 )
 set(glfw3_DIR ./vcpkg_installed/x64-linux/share/glfw3)
 find_package(glfw3 CONFIG REQUIRED)
+set(libwebsockets_DIR ./vcpkg_installed/x64-linux/share/libwebsockets)
+find_package(libwebsockets CONFIG REQUIRED)
 include_directories("./library")
 if (NOT EMSCRIPTEN)
 include_directories("./vcpkg_installed/x64-linux/include")
@@ -34,7 +37,7 @@ add_subdirectory(library/glfw3webgpu)
 add_subdirectory(library/dawn)
 add_subdirectory(library/cimgui)
 target_link_options(waterfall.exe PRIVATE -lstdc++)
-target_link_libraries(waterfall.exe PRIVATE stdc++ glfw webgpu glfw3webgpu cimgui)
+target_link_libraries(waterfall.exe PRIVATE stdc++ glfw webgpu glfw3webgpu cimgui websockets)
 
 if (MSVC)
     target_compile_options(waterfall.exe PRIVATE /W4)

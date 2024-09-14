@@ -7,12 +7,13 @@
 #include "cimgui/cimgui_impl_wgpu.h"
 #include "cimgui/cimgui_impl_glfw.h"
 #include "./Lightning.h"
+#include "./gui/Chat.h"
 
 bool Application_gui_attach(
   GLFWwindow* window,
   WGPUDevice device,
   WGPUTextureFormat depthFormat) {
-  // CIMGUI_CHECKVERSION();
+  Chat_initiate();
   ImGui_CreateContext(0);
   ImGui_GetIO();
   cImGui_ImplGlfw_InitForOther(window, true);
@@ -76,6 +77,7 @@ void Application_gui_render(
            || update;
   lightning->update = update;
   ImGui_End();
+  Chat_render();
   ImGui_EndFrame();
   ImGui_Render();
   cImGui_ImplWGPU_RenderDrawData(ImGui_GetDrawData(), renderPass);
