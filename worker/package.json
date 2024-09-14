@@ -51,7 +51,7 @@
 		"kill": "(ps -aux | grep rollup | grep watch | awk '{print $2}' | xargs kill $1) & (lsof -i tcp:8787 | grep 8787 | awk '{print $2}' | xargs kill $1) & (lsof -i tcp:3333 | grep 3333 | awk '{print $2}' | xargs kill $1)"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "4.20240821.1",
+		"@cloudflare/workers-types": "4.20240909.0",
 		"@typescript-eslint/eslint-plugin": "6.18.1",
 		"@typescript-eslint/parser": "6.18.1",
 		"eslint": "8.56.0",
