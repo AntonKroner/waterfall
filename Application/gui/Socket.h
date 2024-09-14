@@ -65,10 +65,10 @@ static void connect_client(lws_sorted_usec_list_t* sul) {
   i.userdata = m;
   if (!lws_client_connect_via_info(&i)) {
     /*
-                 * Failed... schedule a retry... we can't use the _retry_wsi()
-                 * convenience wrapper api here because no valid wsi at this
-                 * point.
-                 */
+     * Failed... schedule a retry... we can't use the _retry_wsi()
+     * convenience wrapper api here because no valid wsi at this
+     * point.
+     */
     if (lws_retry_sul_schedule(context, 0, sul, &retry, connect_client, &m->retry_count)) {
       lwsl_err("%s: connection attempts exhausted\n", __func__);
       interrupted = 1;
@@ -99,6 +99,7 @@ static int callback_minimal(
       goto do_retry;
     case LWS_CALLBACK_CLIENT_WRITEABLE:
       if (mco.post) {
+	/* TODO: refactor to not use declaration without initialization */
         size_t length = strlen(mco.post);
         unsigned char* message = calloc(LWS_PRE + length, sizeof(*message));
         memcpy(&message[LWS_PRE], mco.post, length * sizeof(*message));
@@ -120,15 +121,15 @@ static int callback_minimal(
   return lws_callback_http_dummy(wsi, reason, user, in, len);
 do_retry:
   /*
-         * retry the connection to keep it nailed up
-         *
-         * For this example, we try to conceal any problem for one set of
-         * backoff retries and then exit the app.
-         *
-         * If you set retry.conceal_count to be LWS_RETRY_CONCEAL_ALWAYS,
-         * it will never give up and keep retrying at the last backoff
-         * delay plus the random jitter amount.
-         */
+   * retry the connection to keep it nailed up
+   *
+   * For this example, we try to conceal any problem for one set of
+   * backoff retries and then exit the app.
+   *
+   * If you set retry.conceal_count to be LWS_RETRY_CONCEAL_ALWAYS,
+   * it will never give up and keep retrying at the last backoff
+   * delay plus the random jitter amount.
+   */
   if (lws_retry_sul_schedule_retry_wsi(wsi, &m->sul, connect_client, &m->retry_count)) {
     lwsl_err("%s: connection attempts exhausted\n", __func__);
     interrupted = 1;
@@ -151,9 +152,9 @@ Socket* Socket_initiate(Chat_Messages messages[static 1]) {
 #if defined(LWS_WITH_MBEDTLS) || defined(USE_WOLFSSL)
   printf("is defined\n");
   /*
-         * OpenSSL uses the system trust store.  mbedTLS has to be told which
-         * CA to trust explicitly.
-         */
+   * OpenSSL uses the system trust store.  mbedTLS has to be told which
+   * CA to trust explicitly.
+   */
   info.client_ssl_ca_filepath = "./libwebsockets.org.cer";
 #endif
   context = lws_create_context(&info);
@@ -186,9 +187,9 @@ int doTheSocket() {
 #if defined(LWS_WITH_MBEDTLS) || defined(USE_WOLFSSL)
   printf("is defined\n");
   /*
-         * OpenSSL uses the system trust store.  mbedTLS has to be told which
-         * CA to trust explicitly.
-         */
+   * OpenSSL uses the system trust store.  mbedTLS has to be told which
+   * CA to trust explicitly.
+   */
   info.client_ssl_ca_filepath = "./libwebsockets.org.cer";
 #endif
   context = lws_create_context(&info);

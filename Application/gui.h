@@ -13,8 +13,6 @@ bool Application_gui_attach(
   GLFWwindow* window,
   WGPUDevice device,
   WGPUTextureFormat depthFormat) {
-  // CIMGUI_CHECKVERSION();
-  // doTheSocket();
   Chat_initiate();
   ImGui_CreateContext(0);
   ImGui_GetIO();
