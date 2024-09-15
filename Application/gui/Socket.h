@@ -138,7 +138,7 @@ do_retry:
   }
   return 0;
 }
-Socket* Socket_initiate(Chat_Messages messages[static 1], char* username, char* password) {
+Socket* Socket_create(Chat_Messages messages[static 1], char* username, char* password) {
   struct lws_context_creation_info info = {
     .options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT,
     .port = CONTEXT_PORT_NO_LISTEN,

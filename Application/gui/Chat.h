@@ -26,7 +26,7 @@ void Chat_initiate() {
     chat.messages = calloc(sizeof(*chat.messages), 1);
     Array_init(chat.messages);
   }
-  chat.socket = Socket_initiate(chat.messages, chat.username, chat.password);
+  chat.socket = Socket_create(chat.messages, chat.username, chat.password);
 }
 void Chat_render() {
   if (!chat.socket) {
