@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.0...3.22.1)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project(
     waterfall
     VERSION 0.1.0
     LANGUAGES C CXX
 )
 set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_executable(waterfall.exe
 	main.c
