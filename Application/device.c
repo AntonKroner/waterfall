@@ -74,10 +74,10 @@ WGPUDevice Application_device_request(WGPUAdapter adapter) {
   WGPUDeviceDescriptor descriptor = {
     .nextInChain = 0,
     .label = "Device 1",
-    .requiredFeaturesCount = 0,
+    .requiredFeatureCount = 0,
     .requiredFeatures = 0,
     .requiredLimits = &required,
-    .defaultQueue = { .label = "default queueuue" }
+    .defaultQueue.label = "default queueuue",
   };
   Response response = { .device = 0, .done = 0 };
   wgpuAdapterRequestDevice(adapter, &descriptor, device_onRequest, (void*)&response);
@@ -350,6 +350,8 @@ static char* compilationStatusStringify(WGPUCompilationInfoRequestStatus status)
       return "Error";
     case WGPUCompilationInfoRequestStatus_DeviceLost:
       return "DeviceLost";
+    case WGPUCompilationInfoRequestStatus_InstanceDropped:
+      return "InstanceDropped";
     case WGPUCompilationInfoRequestStatus_Unknown:
       return "Unknown";
     case WGPUCompilationInfoRequestStatus_Force32:

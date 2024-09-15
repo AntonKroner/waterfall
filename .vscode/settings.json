@@ -51,6 +51,7 @@
 		"texcoords",
 		"TINYOBJ",
 		"Uncaptured",
+		"Unconfigure",
 		"viewports",
 		"webgpu",
 		"wgpu",
