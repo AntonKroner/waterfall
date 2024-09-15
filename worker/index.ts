@@ -1,18 +1,24 @@
 import { gracely } from "gracely"
+import { http } from "cloudly-http"
 import { storage } from "cloudly-storage"
 import { Environment } from "./Environment"
 
 export default {
 	async fetch(request: Request, environment: Environment): Promise<Response> {
 		let result: Response
+		console.log("method: ", request.method)
+		console.log("headers: ", [...request.headers.entries()])
 		const namespace = storage.DurableObject.Namespace.open(environment.realmNamespace)
-		if (!namespace)
+		let authentication: http.Authorization.Basic | undefined
+		if (!(authentication = http.Authorization.Basic.parse(request.headers.get("sec-websocket-protocol") ?? undefined)))
+			result = Response.json(gracely.client.unauthorized("basic"), { status: 401 })
+		else if (!namespace)
 			result = Response.json(gracely.server.misconfigured("realmNamespace", "Namespace missing"), { status: 503 })
 		else if (request.headers.get("Upgrade") != "websocket")
 			result = Response.json(gracely.client.malformedHeader("upgrade", "Expected: websocket"), { status: 400 })
 		else {
 			const client = namespace.open("socket")
-			const socket = await client.socket("/socket")
+			const socket = await client.socket("/socket", { user: authentication.user })
 			result = !socket
 				? Response.json(gracely.server.misconfigured("realmNamespace", "Socket missing"), { status: 503 })
 				: new Response(null, { status: 101, webSocket: socket })
@@ -34,7 +40,6 @@ export class Realm implements DurableObject {
 			this.state.storage.put("messages", m)
 		})
 	}
-
 	constructor(private readonly state: DurableObjectState, readonly environment: Environment) {}
 
 	async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
@@ -55,12 +60,15 @@ export class Realm implements DurableObject {
 	}
 	async fetch(request: Request): Promise<Response> {
 		let result: Response
+		let user: string | null
 		if (request.headers.get("Upgrade") != "websocket")
 			result = Response.json(gracely.client.malformedHeader("upgrade", "Expected: websocket"), { status: 400 })
+		else if (!(user = request.headers.get("user")))
+			result = Response.json(gracely.client.malformedHeader("user", "Expected username"), { status: 400 })
 		else {
 			const [client, server] = Object.values(new WebSocketPair())
 			this.state.acceptWebSocket(server)
-			server.serializeAttachment(Math.floor(Math.random() * 128).toString(16))
+			server.serializeAttachment(user)
 			;(await this.messages).map(m => server.send(m))
 			result = new Response(null, { status: 101, webSocket: client })
 		}
