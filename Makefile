@@ -1,5 +1,5 @@
 all: build compile
-build:
+build: vcpkg_installed
 	cmake . -B build
 compile: build
 	cmake --build build
