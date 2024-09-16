@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <string.h>
 #include <assert.h>
+#include <stdbool.h>
 #include <tgmath.h>
 #include "webgpu.h"
 #define STB_IMAGE_IMPLEMENTATION
