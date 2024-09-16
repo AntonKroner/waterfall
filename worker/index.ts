@@ -10,7 +10,7 @@ export default {
 		console.log("headers: ", [...request.headers.entries()])
 		const namespace = storage.DurableObject.Namespace.open(environment.realmNamespace)
 		let authentication: http.Authorization.Basic | undefined
-		if (!(authentication = http.Authorization.Basic.parse(request.headers.get("sec-websocket-protocol") ?? undefined)))
+		if (!(authentication = http.Authorization.Basic.parse(request.headers.get("authorization") ?? undefined)))
 			result = Response.json(gracely.client.unauthorized("basic"), { status: 401 })
 		else if (!namespace)
 			result = Response.json(gracely.server.misconfigured("realmNamespace", "Namespace missing"), { status: 503 })

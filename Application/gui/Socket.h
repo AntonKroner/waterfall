@@ -53,7 +53,7 @@ static void onConnect(lws_sorted_usec_list_t* sul) {
     .host = i.address,
     .origin = i.address,
     .ssl_connection = ssl_connection,
-    .protocol = m->authentication,
+    // .protocol = m->authentication,
     .pwsi = &m->wsi,
     .retry_and_idle_policy = &retry,
     .userdata = m,
@@ -89,7 +89,7 @@ static int onCallback(
       goto do_retry;
     case LWS_CALLBACK_CLIENT_WRITEABLE:
       if (m->post) {
-        // TODO: use a fixed length buffers for messages
+        // TODO: use a fixed length buffer for messages
         size_t length = strlen(m->post);
         unsigned char* message = calloc(LWS_PRE + length, sizeof(*message));
         memcpy(&message[LWS_PRE], m->post, length * sizeof(*message));
@@ -98,6 +98,15 @@ static int onCallback(
         memset(m->post, 0, 256);
         m->post = 0;
       }
+      break;
+    case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
+      return lws_add_http_header_by_token(
+        wsi,
+        WSI_TOKEN_HTTP_AUTHORIZATION,
+        m->authentication,
+        strlen(m->authentication),
+        in,
+        (*(char**)in) + size);
       break;
     case LWS_CALLBACK_CHANGE_MODE_POLL_FD:
     case LWS_CALLBACK_LOCK_POLL:
@@ -113,7 +122,6 @@ static int onCallback(
     case LWS_CALLBACK_ADD_POLL_FD:
     case LWS_CALLBACK_GET_THREAD_ID:
     case LWS_CALLBACK_PROTOCOL_INIT:
-    case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
     case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH:
       break;
     default:

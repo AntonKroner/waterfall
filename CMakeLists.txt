@@ -25,8 +25,8 @@ set_target_properties(waterfall.exe PROPERTIES
 target_compile_definitions(waterfall.exe PRIVATE
     RESOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources"
 )
-set(glfw3_DIR ./vcpkg_installed/x64-linux/share/glfw3)
-find_package(glfw3 CONFIG REQUIRED)
+# set(glfw3_DIR ./vcpkg_installed/x64-linux/share/glfw3)
+# find_package(glfw3 CONFIG REQUIRED)
 set(libwebsockets_DIR ./vcpkg_installed/x64-linux/share/libwebsockets)
 find_package(libwebsockets CONFIG REQUIRED)
 include_directories("./library")
