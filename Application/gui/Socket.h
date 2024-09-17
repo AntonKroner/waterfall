@@ -68,9 +68,13 @@ static void onConnect(lws_sorted_usec_list_t* sul) {
 }
 static bool handleError(Socket socket[static 1], size_t size, void* data) {
   bool result;
+  printf("error: %s\n", (char*)data);
   if (!strcmp("HS: ws upgrade unauthorized", (char*)data)) {
-    printf("error: %s\n", (char*)data);
     strcpy(socket->error, "Unable to login!");
+    result = false;
+  }
+  else if (!strcmp("HS: ws upgrade response not 101", (char*)data)) {
+    strcpy(socket->error, "Invalid header response!");
     result = false;
   }
   else {

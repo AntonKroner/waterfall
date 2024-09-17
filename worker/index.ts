@@ -16,6 +16,8 @@ export default {
 			result = Response.json(gracely.client.unauthorized("basic"), { status: 401 })
 		else if (authentication.user == "forbidden")
 			result = Response.json(gracely.client.forbidden("used the forbidden user"), { status: 403 })
+		else if (authentication.user == "not found")
+			result = Response.json(gracely.client.notFound("not found test"), { status: 404 })
 		else if (!namespace)
 			result = Response.json(gracely.server.misconfigured("realmNamespace", "Namespace missing"), { status: 503 })
 		else if (request.headers.get("Upgrade") != "websocket")

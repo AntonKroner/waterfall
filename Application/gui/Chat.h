@@ -33,7 +33,6 @@ void Chat_render() {
     Chat_login();
   }
   else if (strlen(chat.socket->error)) {
-    printf("error: %s\n", chat.socket->error);
     ImGui_Begin(
       "Login",
       0,
