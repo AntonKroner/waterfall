@@ -12,6 +12,10 @@ export default {
 		let authentication: http.Authorization.Basic | undefined
 		if (!(authentication = http.Authorization.Basic.parse(request.headers.get("authorization") ?? undefined)))
 			result = Response.json(gracely.client.unauthorized("basic"), { status: 401 })
+		else if (authentication.user == "problem")
+			result = Response.json(gracely.client.unauthorized("basic"), { status: 401 })
+		else if (authentication.user == "forbidden")
+			result = Response.json(gracely.client.forbidden("used the forbidden user"), { status: 403 })
 		else if (!namespace)
 			result = Response.json(gracely.server.misconfigured("realmNamespace", "Namespace missing"), { status: 503 })
 		else if (request.headers.get("Upgrade") != "websocket")

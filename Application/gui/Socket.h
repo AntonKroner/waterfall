@@ -15,6 +15,7 @@ typedef struct {
     Chat_Messages* messages;
     Chat_Message post;
     char authentication[256];
+    char error[256];
     struct lws_context* context;
 } Socket;
 
@@ -65,6 +66,18 @@ static void onConnect(lws_sorted_usec_list_t* sul) {
     }
   }
 }
+static bool handleError(Socket socket[static 1], size_t size, void* data) {
+  bool result;
+  if (!strcmp("HS: ws upgrade unauthorized", (char*)data)) {
+    printf("error: %s\n", (char*)data);
+    strcpy(socket->error, "Unable to login!");
+    result = false;
+  }
+  else {
+    result = true;
+  }
+  return result;
+}
 static int onCallback(
   struct lws* wsi,
   enum lws_callback_reasons reason,
@@ -75,7 +88,9 @@ static int onCallback(
   switch (reason) {
     case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
       lwsl_err("CLIENT_CONNECTION_ERROR: %s\n", in ? (char*)in : "(null)");
-      goto do_retry;
+      if (handleError(m, size, in)) {
+        goto do_retry;
+      }
       break;
     case LWS_CALLBACK_CLIENT_RECEIVE:
       Array_push(m->messages, strdup(in ? (char*)in : "(null)"));
@@ -85,7 +100,7 @@ static int onCallback(
       lwsl_user("%s: established\n", __func__);
       break;
     case LWS_CALLBACK_CLIENT_CLOSED:
-      printf("callback retrying\n");
+      printf("LWS_CALLBACK_CLIENT_CLOSED: retrying...\n");
       goto do_retry;
     case LWS_CALLBACK_CLIENT_WRITEABLE:
       if (m->post) {

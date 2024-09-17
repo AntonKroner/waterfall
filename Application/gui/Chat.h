@@ -32,6 +32,20 @@ void Chat_render() {
   if (!chat.socket) {
     Chat_login();
   }
+  else if (strlen(chat.socket->error)) {
+    printf("error: %s\n", chat.socket->error);
+    ImGui_Begin(
+      "Login",
+      0,
+      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+        | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
+    ImGui_Text("error: %s\n", chat.socket->error);
+    if (ImGui_Button("Retry")) {
+      Socket_destroy(chat.socket);
+      chat.socket = 0;
+    }
+    ImGui_End();
+  }
   else {
     Socket_update(chat.socket);
     ImGui_Begin(
