@@ -74,6 +74,8 @@ static bool handleError(Socket socket[static 1], size_t size, void* data) {
     result = false;
   }
   else if (!strcmp("HS: ws upgrade response not 101", (char*)data)) {
+    unsigned int status = lws_http_client_http_response(socket->wsi);
+    printf("status: %u\n", status);
     strcpy(socket->error, "Invalid header response!");
     result = false;
   }
