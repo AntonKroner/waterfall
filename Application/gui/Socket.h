@@ -75,11 +75,26 @@ static bool handleError(Socket socket[static 1], size_t size, void* data) {
   }
   else if (!strcmp("HS: ws upgrade response not 101", (char*)data)) {
     unsigned int status = lws_http_client_http_response(socket->wsi);
-    printf("status: %u\n", status);
-    strcpy(socket->error, "Invalid header response!");
+    if (status == 403) {
+      strcpy(socket->error, "Forbidden!");
+    }
+    else if (status == 404) {
+      strcpy(socket->error, "Not found!");
+    }
+    else if (status >= 500) {
+      strcpy(socket->error, "Server error!");
+    }
+    else {
+      strcpy(socket->error, "Unknown error!");
+      printf("status: %u\n", status);
+    }
     result = false;
   }
   else {
+    printf(
+      "Unhandled ws error: %s\nStatus: %u\nRetrying...\n",
+      (char*)data,
+      lws_http_client_http_response(socket->wsi));
     result = true;
   }
   return result;

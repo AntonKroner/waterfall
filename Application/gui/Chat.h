@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include "cimgui/cimgui.h"
 #include "./Socket.h"
 #include "./Messages.h"
@@ -13,58 +14,69 @@ typedef struct {
     char input[256];
     char username[256];
     char password[256];
+    bool stay;
 } Chat;
 static Chat chat = { 0 };
 
 void Chat_initiate();
 void Chat_render();
 static void Chat_login();
+static void error();
+static void window();
 static void table();
 static bool input();
+
 void Chat_initiate() {
   if (!chat.messages) {
     chat.messages = calloc(sizeof(*chat.messages), 1);
     Array_init(chat.messages);
   }
   chat.socket = Socket_create(chat.messages, chat.username, chat.password);
+  chat.stay = true;
 }
 void Chat_render() {
   if (!chat.socket) {
     Chat_login();
   }
   else if (strlen(chat.socket->error)) {
-    ImGui_Begin(
-      "Login",
-      0,
-      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
-        | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
-    ImGui_Text("error: %s\n", chat.socket->error);
-    if (ImGui_Button("Retry")) {
-      Socket_destroy(chat.socket);
-      chat.socket = 0;
-    }
-    ImGui_End();
+    error();
   }
   else {
     Socket_update(chat.socket);
-    ImGui_Begin(
-      "Chat",
-      0,
-      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
-        | ImGuiWindowFlags_NoCollapse);
-    ImVec2 size = { 0, -25 };
-    ImGui_BeginChild(
-      "chat message pane",
-      size,
-      ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX,
-      0);
-    table();
-    ImGui_EndChild();
-    if (input()) {
-      Socket_enqueue(chat.socket, chat.input);
-    }
-    ImGui_End();
+    window();
   }
+}
+static void error() {
+  ImGui_Begin(
+    "Login",
+    0,
+    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+      | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
+  ImGui_Text("error: %s\n", chat.socket->error);
+  if (ImGui_Button("Retry")) {
+    Socket_destroy(chat.socket);
+    chat.socket = 0;
+  }
+  ImGui_End();
+}
+static void window() {
+  ImGui_Begin(
+    "Chat",
+    &chat.stay,
+    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+      | ImGuiWindowFlags_NoCollapse);
+  ImVec2 size = { 0, -25 };
+  ImGui_BeginChild(
+    "chat message pane",
+    size,
+    ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX,
+    0);
+  table();
+  ImGui_EndChild();
+  if (input()) {
+    Socket_enqueue(chat.socket, chat.input);
+  }
+  ImGui_End();
 }
 static bool input() {
   bool field = ImGui_InputTextWithHint(
