@@ -52,9 +52,14 @@ export class Realm implements DurableObject {
 		const sockets = this.state.getWebSockets()
 		const id = socket.deserializeAttachment()
 		console.log("message: ", message)
-		const post = `${id}: ${message}`
-		this.messages = post
-		sockets.map(s => s.send(post))
+		if (message == "logout") {
+			socket.close(1000, "user requested logout")
+			sockets.forEach(s => s != socket && s.send(`${id}: logged out`))
+		} else {
+			const post = `${id}: ${message}`
+			this.messages = post
+			sockets.forEach(s => s.send(post))
+		}
 	}
 	async webSocketClose(socket: WebSocket, code: number, reason: string, clean: boolean): Promise<void> {
 		console.log("socket closed with: ", code, reason, clean)
@@ -76,6 +81,7 @@ export class Realm implements DurableObject {
 			this.state.acceptWebSocket(server)
 			server.serializeAttachment(user)
 			;(await this.messages).map(m => server.send(m))
+			this.state.getWebSockets().map(s => s.send(`${user}: logged in`))
 			result = new Response(null, { status: 101, webSocket: client })
 		}
 		return result

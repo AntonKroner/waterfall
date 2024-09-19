@@ -14,7 +14,7 @@ typedef struct {
     char input[256];
     char username[256];
     char password[256];
-    bool stay;
+    bool open;
 } Chat;
 static Chat chat = { 0 };
 
@@ -32,7 +32,7 @@ void Chat_initiate() {
     Array_init(chat.messages);
   }
   chat.socket = Socket_create(chat.messages, chat.username, chat.password);
-  chat.stay = true;
+  chat.open = true;
 }
 void Chat_render() {
   if (!chat.socket) {
@@ -60,23 +60,23 @@ static void error() {
   ImGui_End();
 }
 static void window() {
-  ImGui_Begin(
-    "Chat",
-    &chat.stay,
+  ImGuiWindowFlags flags =
     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
-      | ImGuiWindowFlags_NoCollapse);
-  ImVec2 size = { 0, -25 };
-  ImGui_BeginChild(
-    "chat message pane",
-    size,
-    ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX,
-    0);
-  table();
-  ImGui_EndChild();
-  if (input()) {
-    Socket_enqueue(chat.socket, chat.input);
+    | ImGuiWindowFlags_NoCollapse;
+  if (ImGui_Begin("Chat", &chat.open, flags)) {
+    ImVec2 size = { 0, -25 };
+    ImGuiWindowFlags flags = ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX;
+    ImGui_BeginChild("chat message pane", size, flags, 0);
+    table();
+    ImGui_EndChild();
+    if (input()) {
+      Socket_enqueue(chat.socket, chat.input);
+    }
+    if (!chat.open) {
+      Socket_enqueue(chat.socket, strdup("logout"));
+    }
+    ImGui_End();
   }
-  ImGui_End();
 }
 static bool input() {
   bool field = ImGui_InputTextWithHint(

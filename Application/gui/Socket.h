@@ -120,9 +120,16 @@ static int onCallback(
     case LWS_CALLBACK_CLIENT_ESTABLISHED:
       lwsl_user("%s: established\n", __func__);
       break;
+    case LWS_CALLBACK_WS_PEER_INITIATED_CLOSE:
+      // TODO: handle close
+      printf("LWS_CALLBACK_WS_PEER_INITIATED_CLOSE: %s\n", in ? (char*)in : "(null)");
+      return 0;
+      break;
     case LWS_CALLBACK_CLIENT_CLOSED:
-      printf("LWS_CALLBACK_CLIENT_CLOSED: retrying...\n");
-      goto do_retry;
+      printf("LWS_CALLBACK_CLIENT_CLOSED: %s\nretrying...\n", in ? (char*)in : "(null)");
+      strcpy(m->error, "Logged out!");
+      // goto do_retry;
+      break;
     case LWS_CALLBACK_CLIENT_WRITEABLE:
       if (m->post) {
         // TODO: use a fixed length buffer for messages
@@ -131,7 +138,7 @@ static int onCallback(
         memcpy(&message[LWS_PRE], m->post, length * sizeof(*message));
         lws_write(wsi, &message[LWS_PRE], length * sizeof(*message), LWS_WRITE_TEXT);
         free(message);
-        memset(m->post, 0, 256);
+        memset(m->post, 0, length);
         m->post = 0;
       }
       break;
@@ -189,7 +196,7 @@ Socket* Socket_create(Chat_Messages messages[static 1], char* username, char* pa
     .protocols = protocols,
     .fd_limit_per_thread = 3,
   };
-  lwsl_user("LWS minimal ws client\n");
+  lwsl_user("waterfall client\n");
 #if defined(LWS_WITH_MBEDTLS) || defined(USE_WOLFSSL)
   info.client_ssl_ca_filepath = "./libwebsockets.org.cer";
 #endif
@@ -209,7 +216,6 @@ Socket* Socket_create(Chat_Messages messages[static 1], char* username, char* pa
   }
   else {
     socket->messages = messages;
-    socket->context = lws_create_context(&info);
     lws_sul_schedule(socket->context, 0, &socket->sul, onConnect, 1);
   }
   return socket;
