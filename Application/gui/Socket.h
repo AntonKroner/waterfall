@@ -32,7 +32,7 @@ static int port = 8787;
 static int ssl_connection = LCCSCF_ALLOW_INSECURE;
 static const char* server_address = "localhost";
 static const uint32_t backoff_ms[] = { 1000, 2000, 3000, 4000, 5000 };
-static const lws_retry_bo_t retry = {
+static const lws_retry_bo_t retryPolicy = {
   .retry_ms_table = backoff_ms,
   .retry_ms_table_count = LWS_ARRAY_SIZE(backoff_ms),
   .conceal_count = LWS_ARRAY_SIZE(backoff_ms),
@@ -56,15 +56,24 @@ static void onConnect(lws_sorted_usec_list_t* sul) {
     .ssl_connection = ssl_connection,
     // .protocol = m->authentication,
     .pwsi = &m->wsi,
-    .retry_and_idle_policy = &retry,
+    .retry_and_idle_policy = &retryPolicy,
     .userdata = m,
   };
   if (!lws_client_connect_via_info(&i)) {
-    if (lws_retry_sul_schedule(m->context, 0, sul, &retry, onConnect, &m->retry_count)) {
+    if (
+      lws_retry_sul_schedule(m->context, 0, sul, &retryPolicy, onConnect, &m->retry_count)) {
       lwsl_err("%s: connection attempts exhausted\n", __func__);
       interrupted = 1;
     }
   }
+}
+static int retry(Socket socket[static 1], struct lws* wsi) {
+  if (
+    lws_retry_sul_schedule_retry_wsi(wsi, &socket->sul, onConnect, &socket->retry_count)) {
+    lwsl_err("%s: connection attempts exhausted\n", __func__);
+    interrupted = 1;
+  }
+  return 0;
 }
 static bool handleError(Socket socket[static 1], size_t size, void* data) {
   bool result;
@@ -110,7 +119,7 @@ static int onCallback(
     case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
       lwsl_err("CLIENT_CONNECTION_ERROR: %s\n", in ? (char*)in : "(null)");
       if (handleError(m, size, in)) {
-        goto do_retry;
+        return retry(m, wsi);
       }
       break;
     case LWS_CALLBACK_CLIENT_RECEIVE:
@@ -128,7 +137,7 @@ static int onCallback(
     case LWS_CALLBACK_CLIENT_CLOSED:
       printf("LWS_CALLBACK_CLIENT_CLOSED: %s\nretrying...\n", in ? (char*)in : "(null)");
       strcpy(m->error, "Logged out!");
-      // goto do_retry;
+      // return retry(m, wsi);
       break;
     case LWS_CALLBACK_CLIENT_WRITEABLE:
       if (m->post) {
@@ -172,22 +181,6 @@ static int onCallback(
       break;
   }
   return lws_callback_http_dummy(wsi, reason, user, in, size);
-do_retry:
-  /*
-   * retry the connection to keep it nailed up
-   *
-   * For this example, we try to conceal any problem for one set of
-   * backoff retries and then exit the app.
-   *
-   * If you set retry.conceal_count to be LWS_RETRY_CONCEAL_ALWAYS,
-   * it will never give up and keep retrying at the last backoff
-   * delay plus the random jitter amount.
-   */
-  if (lws_retry_sul_schedule_retry_wsi(wsi, &m->sul, onConnect, &m->retry_count)) {
-    lwsl_err("%s: connection attempts exhausted\n", __func__);
-    interrupted = 1;
-  }
-  return 0;
 }
 Socket* Socket_create(Chat_Messages messages[static 1], char* username, char* password) {
   struct lws_context_creation_info info = {
