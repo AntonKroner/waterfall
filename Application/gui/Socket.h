@@ -59,12 +59,11 @@ static void onConnect(lws_sorted_usec_list_t* sul) {
     .retry_and_idle_policy = &retryPolicy,
     .userdata = m,
   };
-  if (!lws_client_connect_via_info(&i)) {
-    if (
-      lws_retry_sul_schedule(m->context, 0, sul, &retryPolicy, onConnect, &m->retry_count)) {
-      lwsl_err("%s: connection attempts exhausted\n", __func__);
-      interrupted = 1;
-    }
+  if (
+    !lws_client_connect_via_info(&i)
+    && lws_retry_sul_schedule(m->context, 0, sul, &retryPolicy, onConnect, &m->retry_count)) {
+    lwsl_err("%s: connection attempts exhausted\n", __func__);
+    interrupted = 1;
   }
 }
 static int retry(Socket socket[static 1], struct lws* wsi) {
@@ -114,16 +113,16 @@ static int onCallback(
   void* user,
   void* in,
   size_t size) {
-  Socket* m = (Socket*)user;
+  Socket* socket = (Socket*)user;
   switch (reason) {
     case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
       lwsl_err("CLIENT_CONNECTION_ERROR: %s\n", in ? (char*)in : "(null)");
-      if (handleError(m, size, in)) {
-        return retry(m, wsi);
+      if (handleError(socket, size, in)) {
+        return retry(socket, wsi);
       }
       break;
     case LWS_CALLBACK_CLIENT_RECEIVE:
-      Array_push(m->messages, strdup(in ? (char*)in : "(null)"));
+      Array_push(socket->messages, strdup(in ? (char*)in : "(null)"));
       printf("received data: %s\n", in ? (char*)in : "(null)");
       break;
     case LWS_CALLBACK_CLIENT_ESTABLISHED:
@@ -136,27 +135,27 @@ static int onCallback(
       break;
     case LWS_CALLBACK_CLIENT_CLOSED:
       printf("LWS_CALLBACK_CLIENT_CLOSED: %s\nretrying...\n", in ? (char*)in : "(null)");
-      strcpy(m->error, "Logged out!");
+      strcpy(socket->error, "Logged out!");
       // return retry(m, wsi);
       break;
     case LWS_CALLBACK_CLIENT_WRITEABLE:
-      if (m->post) {
+      if (socket->post) {
         // TODO: use a fixed length buffer for messages
-        size_t length = strlen(m->post);
+        size_t length = strlen(socket->post);
         unsigned char* message = calloc(LWS_PRE + length, sizeof(*message));
-        memcpy(&message[LWS_PRE], m->post, length * sizeof(*message));
+        memcpy(&message[LWS_PRE], socket->post, length * sizeof(*message));
         lws_write(wsi, &message[LWS_PRE], length * sizeof(*message), LWS_WRITE_TEXT);
         free(message);
-        memset(m->post, 0, length);
-        m->post = 0;
+        memset(socket->post, 0, length);
+        socket->post = 0;
       }
       break;
     case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
       return lws_add_http_header_by_token(
         wsi,
         WSI_TOKEN_HTTP_AUTHORIZATION,
-        m->authentication,
-        strlen(m->authentication),
+        socket->authentication,
+        strlen(socket->authentication),
         in,
         (*(char**)in) + size);
       break;
