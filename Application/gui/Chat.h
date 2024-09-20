@@ -119,7 +119,9 @@ static void Chat_login() {
     chat.password,
     256,
     ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_Password);
-  if (strlen(chat.username) > 0 && strlen(chat.password) > 0 && ImGui_Button("Login")) {
+  if (
+    strlen(chat.username) > 0 && strlen(chat.password) > 0
+    && (password || ImGui_Button("Login"))) {
     Chat_initiate();
   }
   ImGui_End();
