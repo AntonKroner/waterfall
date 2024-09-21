@@ -13,7 +13,6 @@ bool Application_gui_attach(
   GLFWwindow* window,
   WGPUDevice device,
   WGPUTextureFormat depthFormat) {
-  Chat_initiate();
   ImGui_CreateContext(0);
   ImGui_GetIO();
   cImGui_ImplGlfw_InitForOther(window, true);
