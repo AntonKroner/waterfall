@@ -1,10 +1,9 @@
 #ifndef Application_H_
 #define Application_H_
 
-#include "Compute.h"
+#include "./Compute.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdbool.h>
 #include "webgpu.h"
 #include "GLFW/glfw3.h"
 #include "glfw3webgpu/glfw3webgpu.h"
@@ -38,9 +37,9 @@ typedef struct {
     GLFWwindow* window;
     WGPUInstance instance;
     WGPUSurface surface;
+    WGPUSurfaceCapabilities capabilities;
     WGPUDevice device;
     WGPUQueue queue;
-    WGPUSwapChain swapChain;
     WGPUShaderModule shader;
     struct {
         WGPUTextureFormat format;
@@ -153,27 +152,26 @@ static void depthBuffer_detach(Application application[static 1]) {
   wgpuTextureRelease(application->depth.texture);
   wgpuTextureViewRelease(application->depth.view);
 }
-static void swapChain_attach(Application application[static 1], int width, int height) {
-  if (application->swapChain) {
-    wgpuSwapChainRelease(application->swapChain);
-  }
-  WGPUSwapChainDescriptor swapChainDescriptor = {
+static void surface_attach(Application application[static 1], size_t width, size_t height) {
+  const WGPUSurfaceConfiguration configuration = {
     .nextInChain = 0,
     .width = width,
     .height = height,
+    .format =  23, // meant to be: application->capabilities.formats[0], but for some reason it doesn't work for every adapter type
+    .viewFormatCount = 0,
+    .viewFormats = 0,
     .usage = WGPUTextureUsage_RenderAttachment,
-    .format = WGPUTextureFormat_BGRA8Unorm,
+    .device = application->device,
     .presentMode = WGPUPresentMode_Fifo,
+    .alphaMode = WGPUCompositeAlphaMode_Auto,
   };
-  application->swapChain = wgpuDeviceCreateSwapChain(
-    application->device,
-    application->surface,
-    &swapChainDescriptor);
+  wgpuSurfaceConfigure(application->surface, &configuration);
 }
 static void onResize(GLFWwindow* window, int width, int height) {
   Application* application = (Application*)glfwGetWindowUserPointer(window);
   if (application) {
-    swapChain_attach(application, width, height);
+    wgpuSurfaceUnconfigure(application->surface);
+    surface_attach(application, width, height);
     depthBuffer_detach(application);
     depthBuffer_attach(application, width, height);
     application->uniforms.matrices.projection = Matrix4f_transpose(
@@ -210,6 +208,26 @@ static void onMouseScroll(GLFWwindow* window, double x, double y) {
       Matrix4f_transpose(Application_Camera_viewGet(application->camera));
     application->uniforms.cameraPosition = application->camera.position;
   }
+}
+static WGPUTextureView nextView(WGPUSurface surface) {
+  WGPUTextureView result = 0;
+  WGPUSurfaceTexture surfaceTexture = { 0 };
+  wgpuSurfaceGetCurrentTexture(surface, &surfaceTexture);
+  if (surfaceTexture.status == WGPUSurfaceGetCurrentTextureStatus_Success) {
+    WGPUTextureViewDescriptor viewDescriptor = {
+      .nextInChain = 0,
+      .label = "Surface texture view",
+      .format = wgpuTextureGetFormat(surfaceTexture.texture),
+      .dimension = WGPUTextureViewDimension_2D,
+      .baseMipLevel = 0,
+      .mipLevelCount = 1,
+      .baseArrayLayer = 0,
+      .arrayLayerCount = 1,
+      .aspect = WGPUTextureAspect_All,
+    };
+    result = wgpuTextureCreateView(surfaceTexture.texture, &viewDescriptor);
+  }
+  return result;
 }
 static bool setWindowHints() {
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -261,12 +279,13 @@ Application* Application_create(bool inspect) {
       Application_device_inspect(result->device);
       Application_adapter_inspect(adapter);
     }
-    wgpuAdapterRelease(adapter);
-    result->queue = wgpuDeviceGetQueue(result->device);
+    wgpuSurfaceGetCapabilities(result->surface, adapter, &result->capabilities);
     int width = 0;
     int height = 0;
     glfwGetFramebufferSize(result->window, &width, &height);
-    swapChain_attach(result, WIDTH, HEIGHT);
+    surface_attach(result, width, height);
+    wgpuAdapterRelease(adapter);
+    result->queue = wgpuDeviceGetQueue(result->device);
     texture_attach(result);
     depthBuffer_attach(result, WIDTH, HEIGHT);
     result->shader = Application_device_ShaderModule(
@@ -463,48 +482,48 @@ bool Application_shouldClose(Application application[static 1]) {
 void Application_render(Application application[static 1]) {
   glfwPollEvents();
   Application_Lightning_update(&application->lightning, application->queue);
-  WGPUTextureView nextTexture =
-    wgpuSwapChainGetCurrentTextureView(application->swapChain);
+  WGPUTextureView nextTexture = nextView(application->surface);
   if (!nextTexture) {
     perror("Cannot acquire next swap chain texture\n");
-    return;
   }
-  application->uniforms.time = (float)glfwGetTime();
-  wgpuQueueWriteBuffer(
-    application->queue,
-    application->buffers.uniform,
-    0,
-    &application->uniforms,
-    sizeof(Uniforms));
-  WGPUCommandEncoderDescriptor commandEncoderDesc = {
-    .nextInChain = 0,
-    .label = "Command Encoder",
-  };
-  WGPUCommandEncoder encoder =
-    wgpuDeviceCreateCommandEncoder(application->device, &commandEncoderDesc);
-  WGPURenderPassEncoder renderPass =
-    Application_RenderPassEncoder_make(encoder, nextTexture, application->depth.view);
-  wgpuRenderPassEncoderSetPipeline(renderPass, application->pipeline);
-  wgpuRenderPassEncoderSetVertexBuffer(
-    renderPass,
-    0,
-    application->buffers.vertex,
-    0,
-    application->vertexCount * sizeof(Model_Vertex));
-  wgpuRenderPassEncoderSetBindGroup(renderPass, 0, application->bindGroup, 0, 0);
-  wgpuRenderPassEncoderDraw(renderPass, application->vertexCount, 1, 0, 0);
-  Application_gui_render(renderPass, &application->lightning);
-  wgpuRenderPassEncoderEnd(renderPass);
-  wgpuTextureViewRelease(nextTexture);
-  WGPUCommandBufferDescriptor cmdBufferDescriptor = {
-    .nextInChain = 0,
-    .label = "command buffer",
-  };
-  WGPUCommandBuffer command = wgpuCommandEncoderFinish(encoder, &cmdBufferDescriptor);
-  wgpuCommandEncoderRelease(encoder);
-  wgpuQueueSubmit(application->queue, 1, &command);
-  wgpuCommandBufferRelease(command);
-  wgpuSwapChainPresent(application->swapChain);
+  else {
+    application->uniforms.time = (float)glfwGetTime();
+    wgpuQueueWriteBuffer(
+      application->queue,
+      application->buffers.uniform,
+      0,
+      &application->uniforms,
+      sizeof(Uniforms));
+    WGPUCommandEncoderDescriptor commandEncoderDesc = {
+      .nextInChain = 0,
+      .label = "Command Encoder",
+    };
+    WGPUCommandEncoder encoder =
+      wgpuDeviceCreateCommandEncoder(application->device, &commandEncoderDesc);
+    WGPURenderPassEncoder renderPass =
+      Application_RenderPassEncoder_make(encoder, nextTexture, application->depth.view);
+    wgpuRenderPassEncoderSetPipeline(renderPass, application->pipeline);
+    wgpuRenderPassEncoderSetVertexBuffer(
+      renderPass,
+      0,
+      application->buffers.vertex,
+      0,
+      application->vertexCount * sizeof(Model_Vertex));
+    wgpuRenderPassEncoderSetBindGroup(renderPass, 0, application->bindGroup, 0, 0);
+    wgpuRenderPassEncoderDraw(renderPass, application->vertexCount, 1, 0, 0);
+    Application_gui_render(renderPass, &application->lightning);
+    wgpuRenderPassEncoderEnd(renderPass);
+    wgpuTextureViewRelease(nextTexture);
+    WGPUCommandBufferDescriptor cmdBufferDescriptor = {
+      .nextInChain = 0,
+      .label = "command buffer",
+    };
+    WGPUCommandBuffer command = wgpuCommandEncoderFinish(encoder, &cmdBufferDescriptor);
+    wgpuCommandEncoderRelease(encoder);
+    wgpuQueueSubmit(application->queue, 1, &command);
+    wgpuCommandBufferRelease(command);
+  }
+  wgpuSurfacePresent(application->surface);
   wgpuDeviceTick(application->device);
 }
 void Application_compute(Application application[static 1]) {
@@ -520,7 +539,6 @@ void Application_compute(Application application[static 1]) {
   WGPUComputePassDescriptor descriptor = {
     .nextInChain = 0,
     .label = "compute pass",
-    .timestampWriteCount = 0,
     .timestampWrites = 0,
   };
   WGPUComputePassEncoder pass = wgpuCommandEncoderBeginComputePass(encoder, &descriptor);
@@ -543,7 +561,7 @@ void Application_compute(Application application[static 1]) {
   wgpuCommandBufferRelease(commands);
   wgpuCommandEncoderRelease(encoder);
   wgpuComputePassEncoderRelease(pass);
-  // maybe?  wgpuDeviceTick(application->device);
+  wgpuDeviceTick(application->device);
 }
 void Application_destroy(Application* application) {
   Application_Lightning_destroy(application->lightning);
@@ -554,7 +572,8 @@ void Application_destroy(Application* application) {
   wgpuBindGroupRelease(application->bindGroup);
   wgpuRenderPipelineRelease(application->pipeline);
   wgpuShaderModuleRelease(application->shader);
-  wgpuSwapChainRelease(application->swapChain);
+  wgpuSurfaceUnconfigure(application->surface);
+  wgpuSurfaceRelease(application->surface);
   wgpuQueueRelease(application->queue);
   wgpuDeviceRelease(application->device);
   wgpuInstanceRelease(application->instance);
