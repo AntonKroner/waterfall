@@ -157,7 +157,7 @@ static void surface_attach(Application application[static 1], size_t width, size
     .nextInChain = 0,
     .width = width,
     .height = height,
-    .format = application->capabilities.formats[0],
+    .format =  23, // meant to be: application->capabilities.formats[0], but for some reason it doesn't work for every adapter type
     .viewFormatCount = 0,
     .viewFormats = 0,
     .usage = WGPUTextureUsage_RenderAttachment,
