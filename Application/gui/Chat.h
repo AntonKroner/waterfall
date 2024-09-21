@@ -102,6 +102,8 @@ static void table() {
   }
 }
 static void Chat_login() {
+  ImVec2 size = { 200, 100 };
+  ImGui_SetNextWindowSize(size, 0);
   ImGui_Begin(
     "Login",
     0,
