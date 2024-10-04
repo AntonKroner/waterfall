@@ -5,7 +5,6 @@
 #include <string.h>
 #include <stdbool.h>
 #include <assert.h>
-#include <stdbool.h>
 #include <tgmath.h>
 #include "webgpu.h"
 #define STB_IMAGE_IMPLEMENTATION
@@ -82,7 +81,7 @@ WGPUDevice Application_device_request(WGPUAdapter adapter) {
     .defaultQueue.label = "default queueuue",
   };
   Response response = { .device = 0, .done = 0 };
-  wgpuAdapterRequestDevice(adapter, &descriptor, device_onRequest, (void*)&response);
+  wgpuAdapterRequestDevice(adapter, &descriptor, device_onRequest, &response);
   assert(response.done);
   wgpuDeviceSetUncapturedErrorCallback(response.device, onDeviceError, 0);
   wgpuDeviceSetLoggingCallback(response.device, onLog, 0);
