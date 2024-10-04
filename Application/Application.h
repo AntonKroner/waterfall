@@ -1,7 +1,6 @@
 #ifndef Application_H_
 #define Application_H_
 
-#include "./Compute.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "webgpu.h"
@@ -61,7 +60,6 @@ typedef struct {
     Uniforms uniforms;
     Camera camera;
     Application_Lighting lightning;
-    Application_Compute compute;
 } Application;
 
 Application* Application_create(bool inspect);
@@ -95,11 +93,9 @@ static void buffers_detach(Application application[static 1]) {
   wgpuBufferDestroy(application->buffers.uniform);
   wgpuBufferRelease(application->buffers.uniform);
 }
-static void texture_attach(Application application[static 1]) {
-  application->texture.texture = Application_device_Texture_load(
-    application->device,
-    RESOURCE_DIR "/fourareen/fourareen2K_albedo.jpg",
-    &application->texture.view);
+static void texture_attach(Application application[static 1], const char* path) {
+  application->texture.texture =
+    Application_device_Texture_load(application->device, path, &application->texture.view);
   WGPUSamplerDescriptor samplerDescriptor = {
     .addressModeU = WGPUAddressMode_ClampToEdge,
     .addressModeV = WGPUAddressMode_ClampToEdge,
@@ -157,7 +153,8 @@ static void surface_attach(Application application[static 1], size_t width, size
     .nextInChain = 0,
     .width = width,
     .height = height,
-    .format =  23, // meant to be: application->capabilities.formats[0], but for some reason it doesn't work for every adapter type
+    .format =
+      23, // meant to be: application->capabilities.formats[0], but for some reason it doesn't work for every adapter type
     .viewFormatCount = 0,
     .viewFormats = 0,
     .usage = WGPUTextureUsage_RenderAttachment,
@@ -286,7 +283,7 @@ Application* Application_create(bool inspect) {
     surface_attach(result, width, height);
     wgpuAdapterRelease(adapter);
     result->queue = wgpuDeviceGetQueue(result->device);
-    texture_attach(result);
+    texture_attach(result, RESOURCE_DIR "/fourareen/fourareen2K_albedo.jpg");
     depthBuffer_attach(result, WIDTH, HEIGHT);
     result->shader = Application_device_ShaderModule(
       result->device,
@@ -524,43 +521,6 @@ void Application_render(Application application[static 1]) {
     wgpuCommandBufferRelease(command);
   }
   wgpuSurfacePresent(application->surface);
-  wgpuDeviceTick(application->device);
-}
-void Application_compute(Application application[static 1]) {
-  // Initialize a command encoder
-  WGPUCommandEncoderDescriptor commandEncoderDesc = {
-    .nextInChain = 0,
-    .label = "Command Encoder",
-  };
-  WGPUCommandEncoder encoder =
-    wgpuDeviceCreateCommandEncoder(application->device, &commandEncoderDesc);
-
-  // Create and use compute pass here!
-  WGPUComputePassDescriptor descriptor = {
-    .nextInChain = 0,
-    .label = "compute pass",
-    .timestampWrites = 0,
-  };
-  WGPUComputePassEncoder pass = wgpuCommandEncoderBeginComputePass(encoder, &descriptor);
-
-  WGPUComputePipeline pipeline = computePipeline_attach(application);
-
-  wgpuComputePassEncoderSetPipeline(pass, pipeline);
-  wgpuComputePassEncoderSetBindGroup(pass, 0, 0, 0, 0);
-  wgpuComputePassEncoderDispatchWorkgroups(pass, 1, 1, 1);
-
-  wgpuComputePassEncoderEnd(pass);
-  WGPUCommandBufferDescriptor cmdBufferDescriptor = {
-    .nextInChain = 0,
-    .label = "command buffer",
-  };
-  // Encode and submit the GPU commands
-  WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, &cmdBufferDescriptor);
-
-  wgpuQueueSubmit(application->queue, 1, &commands);
-  wgpuCommandBufferRelease(commands);
-  wgpuCommandEncoderRelease(encoder);
-  wgpuComputePassEncoderRelease(pass);
   wgpuDeviceTick(application->device);
 }
 void Application_destroy(Application* application) {
