@@ -13,18 +13,39 @@ typedef struct {
     bool dragging;
 } Camera;
 
+void Application_Camera_initiate(
+  Camera camera[static 1],
+  const float phi,
+  const float theta);
 Matrix4f Application_Camera_viewGet(Camera camera);
 void Application_Camera_rotate(Camera camera[static 1], const float phi);
 void Application_Camera_moveTarget(Camera camera[static 1], Vector3f direction);
 void Application_Camera_zoom(Camera camera[static 1], float x, float y);
 
 Matrix4f Application_Camera_viewGet(Camera camera) {
-  return Matrix4f_lookAt(camera.position, camera.target, Vector3f_make(0, 0, 1.0f));
+  return Matrix4f_lookAt(
+    Vector_scale(camera.zoom, camera.position),
+    camera.target,
+    Vector3f_make(0, 0, 1.0f));
 }
 const float sensitivity = 0.01f;
 const float scrollSensitivity = 0.1f;
 static double clamp(double value) {
   return fabs(value) > 2 * M_PI ? 0 : value;
+}
+void Application_Camera_initiate(
+  Camera camera[static 1],
+  const float phi,
+  const float theta) {
+  camera->angles.components[0] = clamp(theta);
+  camera->angles.components[1] = clamp(phi);
+  const float cosTheta = cos(camera->angles.components[0]);
+  const float sinTheta = sin(camera->angles.components[0]);
+  const float cosPhi = cos(camera->angles.components[1]);
+  const float sinPhi = sin(camera->angles.components[1]);
+  camera->position = Vector_add(
+    camera->target,
+    Vector_scale(1, Vector3f_make(cosTheta * cosPhi, sinPhi * cosTheta, sinTheta)));
 }
 void Application_Camera_rotate(Camera camera[static 1], const float phi) {
   camera->angles.components[0] = clamp(camera->angles.components[0]);
@@ -44,13 +65,8 @@ void Application_Camera_moveTarget(Camera camera[static 1], Vector3f direction) 
   camera->target.components[2] += sensitivity * direction.components[2];
 }
 void Application_Camera_zoom(Camera camera[static 1], float /*x*/, float y) {
-  camera->zoom += scrollSensitivity * y;
-  float cx = cos(camera->angles.components[0]);
-  float sx = sin(camera->angles.components[0]);
-  float cy = cos(camera->angles.components[1]);
-  float sy = sin(camera->angles.components[1]);
-  camera->position =
-    Vector_scale(exp(-camera->zoom), Vector3f_make(cx * cy, sx * cy, sy));
+  camera->zoom += scrollSensitivity * -y;
+  camera->zoom = fmax(0.001, fmin(10.0, camera->zoom));
 }
 
 #endif // Camera_H_

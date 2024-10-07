@@ -67,8 +67,8 @@ static void surface_attach(Application application[static 1], size_t width, size
   wgpuSurfaceConfigure(application->surface, &configuration);
 }
 static void uniform_attach(Application application[static 1], double width, double height) {
-  application->camera.position = Vector3f_fill(0); //Vector3f_make(-2.0f, -3.0f, 2.0f);
-  application->camera.zoom = -1.2;
+  Application_Camera_initiate(&application->camera, M_PI * 45 / 180, M_PI * 45 / 180);
+  application->camera.zoom = 1.0f;
   Uniforms uniforms = {
     .matrices.model = Matrix4f_transpose(Matrix4f_diagonal(1.0)),
     .matrices.view = Matrix4f_transpose(Application_Camera_viewGet(application->camera)),
@@ -157,6 +157,10 @@ static void onKeyPress(
         break;
       case GLFW_KEY_RIGHT:
         Application_Camera_rotate(&application->camera, 1);
+        break;
+      case GLFW_KEY_SPACE:
+        Application_Camera_initiate(&application->camera, M_PI * 45 / 180, M_PI * 45 / 180);
+        application->camera.zoom = 1;
         break;
     }
     application->uniforms.matrices.view =
