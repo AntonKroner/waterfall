@@ -6,7 +6,6 @@
 #include "webgpu.h"
 #include "GLFW/glfw3.h"
 #include "glfw3webgpu/glfw3webgpu.h"
-#include "cimgui/cimgui.h"
 #include "linear/algebra.h"
 #include "./adapter.h"
 #include "./device.h"
@@ -56,7 +55,8 @@ static void surface_attach(Application application[static 1], size_t width, size
     .nextInChain = 0,
     .width = width,
     .height = height,
-    .format = application->capabilities.formats[0],
+    .format =
+      23, // meant to be: application->capabilities.formats[0], but for some reason it doesn't work for every adapter type
     .viewFormatCount = 0,
     .viewFormats = 0,
     .usage = WGPUTextureUsage_RenderAttachment,
@@ -111,31 +111,61 @@ static void onResize(GLFWwindow* window, int width, int height) {
   }
 }
 static void onMouseMove(GLFWwindow* window, double x, double y) {
-  Application* application = (Application*)glfwGetWindowUserPointer(window);
-  if (application) {
-    Application_Camera_move(&application->camera, (float)x, (float)y);
-    application->uniforms.matrices.view =
-      Matrix4f_transpose(Application_Camera_viewGet(application->camera));
-    application->uniforms.cameraPosition = application->camera.position;
+  if (Application_gui_isCapturing()) {
+    return;
   }
 }
 static void onMouseButton(GLFWwindow* window, int button, int action, int /* mods*/) {
-  ImGuiIO* io = ImGui_GetIO();
-  if (io->WantCaptureMouse) {
+  if (Application_gui_isCapturing()) {
     return;
-  }
-  Application* application = (Application*)glfwGetWindowUserPointer(window);
-  if (application) {
-    double x = 0;
-    double y = 0;
-    glfwGetCursorPos(window, &x, &y);
-    Application_Camera_activate(&application->camera, button, action, (float)x, (float)y);
   }
 }
 static void onMouseScroll(GLFWwindow* window, double x, double y) {
   Application* application = (Application*)glfwGetWindowUserPointer(window);
   if (application) {
     Application_Camera_zoom(&application->camera, (float)x, (float)y);
+    application->uniforms.matrices.view =
+      Matrix4f_transpose(Application_Camera_viewGet(application->camera));
+    application->uniforms.cameraPosition = application->camera.position;
+  }
+}
+static void onKeyPress(
+  GLFWwindow* window,
+  int key,
+  int /*scancode*/,
+  int /*action*/,
+  int /*mods*/) {
+  Application* application = (Application*)glfwGetWindowUserPointer(window);
+  if (application) {
+    switch (key) {
+      case GLFW_KEY_ESCAPE:
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+        break;
+      case GLFW_KEY_W:
+        Application_Camera_moveTarget(&application->camera, Vector3f_make(1, 0, 0));
+        break;
+      case GLFW_KEY_S:
+        Application_Camera_moveTarget(&application->camera, Vector3f_make(-1, 0, 0));
+        break;
+      case GLFW_KEY_A:
+        Application_Camera_moveTarget(&application->camera, Vector3f_make(0, -1, 0));
+        break;
+      case GLFW_KEY_D:
+        Application_Camera_moveTarget(&application->camera, Vector3f_make(0, 1, 0));
+        break;
+      case GLFW_KEY_UP:
+        Application_Camera_moveTarget(&application->camera, Vector3f_make(0, 0, 1));
+        break;
+      case GLFW_KEY_DOWN:
+        Application_Camera_moveTarget(&application->camera, Vector3f_make(0, 0, -1));
+        break;
+      case GLFW_KEY_LEFT:
+        Application_Camera_rotate(&application->camera, -1);
+        break;
+      case GLFW_KEY_RIGHT:
+        Application_Camera_rotate(&application->camera, 1);
+        break;
+    }
     application->uniforms.matrices.view =
       Matrix4f_transpose(Application_Camera_viewGet(application->camera));
     application->uniforms.cameraPosition = application->camera.position;
@@ -172,6 +202,7 @@ static void attachCallbacks(Application application[static 1]) {
   glfwSetCursorPosCallback(application->window, onMouseMove);
   glfwSetMouseButtonCallback(application->window, onMouseButton);
   glfwSetScrollCallback(application->window, onMouseScroll);
+  glfwSetKeyCallback(application->window, onKeyPress);
 }
 Application* Application_create(const size_t width, const size_t height, bool inspect) {
   WGPUInstanceDescriptor descriptor = { .nextInChain = 0 };
@@ -283,7 +314,7 @@ void Application_render(Application application[static 1]) {
     for (size_t i = 0; TARGET_COUNT > i; i++) {
       RenderTarget_render(application->targets[i], renderPass);
     }
-    Application_gui_render(renderPass, &application->lightning);
+    Application_gui_render(renderPass, &application->lightning, &application->camera);
     wgpuRenderPassEncoderEnd(renderPass);
     wgpuTextureViewRelease(nextTexture);
     WGPUCommandBufferDescriptor cmdBufferDescriptor = {

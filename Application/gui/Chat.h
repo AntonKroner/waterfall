@@ -1,6 +1,5 @@
 #ifndef Chat_H_
 #define Chat_H_
-
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -75,8 +74,8 @@ static void window() {
     if (!chat.open) {
       Socket_enqueue(chat.socket, strdup("logout"));
     }
-    ImGui_End();
   }
+  ImGui_End();
 }
 static bool input() {
   bool field = ImGui_InputTextWithHint(
