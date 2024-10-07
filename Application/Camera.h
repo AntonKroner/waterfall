@@ -35,8 +35,8 @@ void Application_Camera_rotate(Camera camera[static 1], const float phi) {
   const float cosPhi = cos(camera->angles.components[1]);
   const float sinPhi = sin(camera->angles.components[1]);
   camera->position = Vector_add(
-    Vector_scale(norm, Vector3f_make(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta)),
-    camera->target);
+    camera->target,
+    Vector_scale(norm, Vector3f_make(cosTheta * cosPhi, sinPhi * cosTheta, sinTheta)));
 }
 void Application_Camera_moveTarget(Camera camera[static 1], Vector3f direction) {
   camera->target.components[0] += sensitivity * direction.components[0];

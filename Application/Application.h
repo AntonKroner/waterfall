@@ -67,22 +67,15 @@ static void surface_attach(Application application[static 1], size_t width, size
   wgpuSurfaceConfigure(application->surface, &configuration);
 }
 static void uniform_attach(Application application[static 1], double width, double height) {
-  application->camera.position.components[0] = -2.0f;
-  application->camera.position.components[1] = -3.0f;
+  application->camera.position = Vector3f_fill(0); //Vector3f_make(-2.0f, -3.0f, 2.0f);
   application->camera.zoom = -1.2;
   Uniforms uniforms = {
     .matrices.model = Matrix4f_transpose(Matrix4f_diagonal(1.0)),
-    .matrices.view = Matrix4f_transpose(Matrix4f_lookAt(
-      Vector3f_make(-2.0f, -3.0f, 2.0f),
-      Vector3f_fill(0.0f),
-      Vector3f_make(0, 0, 1.0f))),
+    .matrices.view = Matrix4f_transpose(Application_Camera_viewGet(application->camera)),
     .matrices.projection =
       Matrix4f_transpose(Matrix4f_perspective(45, width / height, 0.01f, 100.0f)),
     .time = 0.0f,
-    .cameraPosition = Vector3f_make(
-      application->camera.position.components[0],
-      application->camera.position.components[1],
-      1.0f),
+    .cameraPosition = application->camera.position,
     .color = Vector4f_make(0.0f, 1.0f, 0.4f, 1.0f),
   };
   application->uniforms = uniforms;
