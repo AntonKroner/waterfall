@@ -15,10 +15,11 @@
 #include "./RenderTarget/RenderTarget.h"
 #include "./RenderTarget/Fourareen.h"
 #include "./RenderTarget/Mammoth.h"
+#include "./RenderTarget/Player.h"
 #include "./Camera.h"
 #include "./gui.h"
 
-#define TARGET_COUNT (3)
+#define TARGET_COUNT (4)
 
 typedef struct {
     struct {
@@ -253,7 +254,7 @@ Application* Application_create(const size_t width, const size_t height, bool in
     result->depth = Application_Depth_attach(result->device, width, height);
     result->lightning = Application_Lightning_create(result->device);
     uniform_attach(result, width, height);
-    for (size_t i = 0; TARGET_COUNT - 1 > i; i++) {
+    for (size_t i = 0; TARGET_COUNT - 2 > i; i++) {
       result->targets[i] = (RenderTarget*)Fourareen_Create(
         0,
         result->device,
@@ -265,7 +266,7 @@ Application* Application_create(const size_t width, const size_t height, bool in
         sizeof(Uniforms),
         Vector3f_make(i * 5, 0, 0));
     }
-    result->targets[TARGET_COUNT - 1] = (RenderTarget*)Mammoth_Create(
+    result->targets[TARGET_COUNT - 2] = (RenderTarget*)Mammoth_Create(
       0,
       result->device,
       result->queue,
@@ -275,6 +276,17 @@ Application* Application_create(const size_t width, const size_t height, bool in
       result->uniformBuffer,
       sizeof(Uniforms),
       Vector3f_make(0, 3, 0));
+    result->targets[TARGET_COUNT - 1] = (RenderTarget*)Player_Create(
+      0,
+      result->device,
+      result->queue,
+      result->depth.format,
+      result->lightning.buffer,
+      sizeof(Application_Lighting_Uniforms),
+      result->uniformBuffer,
+      sizeof(Uniforms),
+      Vector3f_make(0, 4, 0),
+      Vector3f_make(0, 4, 0));
     if (!Application_gui_attach(result->window, result->device, result->depth.format)) {
       printf("gui problem!!\n");
     }

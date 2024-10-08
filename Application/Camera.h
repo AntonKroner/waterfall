@@ -28,7 +28,7 @@ Matrix4f Application_Camera_viewGet(Camera camera) {
     camera.target,
     Vector3f_make(0, 0, 1.0f));
 }
-const float sensitivity = 0.01f;
+const float sensitivity = 0.1f;
 const float scrollSensitivity = 0.1f;
 static double clamp(double value) {
   return fabs(value) > 2 * M_PI ? 0 : value;
