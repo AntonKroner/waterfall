@@ -8,7 +8,6 @@
 typedef struct {
     Vector3f position;
 } Player_Uniforms;
-
 typedef RenderTarget_EXTEND({ Vector3f position; }) Player;
 
 Player* Player_Create(

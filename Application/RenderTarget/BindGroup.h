@@ -1,8 +1,16 @@
 #ifndef BindGroup_H
 #define BindGroup_H
+#include "Texture.h"
 #include "webgpu.h"
 
-WGPUBindGroup BindGroup_create(WGPUDevice device) {
+WGPUBindGroup BindGroup_make(
+  WGPUDevice device,
+  WGPUBindGroupLayout bindGroupLayout,
+  Texture texture,
+  WGPUBuffer lightningBuffer,
+  size_t lightningBufferSize,
+  WGPUBuffer uniformBuffer,
+  size_t uniformBufferSize) {
   WGPUBindGroupEntry bindings[] = {
     {
      .nextInChain = 0,
@@ -14,12 +22,12 @@ WGPUBindGroup BindGroup_create(WGPUDevice device) {
     {
      .nextInChain = 0,
      .binding = 1,
-     .textureView = result->texture.view,
+     .textureView = texture.view,
      },
     {
      .nextInChain = 0,
      .binding = 2,
-     .sampler = result->texture.sampler,
+     .sampler = texture.sampler,
      },
     {
      .nextInChain = 0,
@@ -32,7 +40,7 @@ WGPUBindGroup BindGroup_create(WGPUDevice device) {
   WGPUBindGroupDescriptor bindGroupDescriptor = {
     .nextInChain = 0,
     .layout = bindGroupLayout,
-    .entryCount = bindGroupLayoutDescriptor.entryCount,
+    .entryCount = 4,
     .entries = bindings,
   };
   return wgpuDeviceCreateBindGroup(device, &bindGroupDescriptor);
