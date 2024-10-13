@@ -1,31 +1,50 @@
-#ifndef Pipeline_H
-#define Pipeline_H
+#ifndef Pipeline_H_
+#define Pipeline_H_
 #include "webgpu.h"
-#include "./DepthStencilState.h"
-#include "./BindGroupLayout.h"
 #include "./Model.h"
 
 WGPURenderPipeline Pipeline_make(
   WGPUDevice device,
   WGPUShaderModule shader,
-  size_t lightningBufferSize,
-  size_t uniformBufferSize,
+  WGPUBindGroupLayout bindGroupLayout,
   WGPUTextureFormat depthFormat);
 
+static WGPUDepthStencilState DepthStencilState_make() {
+  WGPUStencilFaceState face = {
+    .compare = WGPUCompareFunction_Always,
+    .failOp = WGPUStencilOperation_Keep,
+    .depthFailOp = WGPUStencilOperation_Keep,
+    .passOp = WGPUStencilOperation_Keep,
+  };
+  WGPUDepthStencilState result = {
+    .nextInChain = 0,
+    .format = WGPUTextureFormat_Undefined,
+    .depthWriteEnabled = false,
+    .depthCompare = WGPUCompareFunction_Always,
+    .stencilFront = face,
+    .stencilBack = face,
+    .stencilReadMask = 0,
+    .stencilWriteMask = 0,
+    .depthBias = 0,
+    .depthBiasSlopeScale = 0,
+    .depthBiasClamp = 0,
+  };
+  return result;
+}
+
+const WGPUBlendState blendState = {
+  .color.srcFactor = WGPUBlendFactor_SrcAlpha,
+  .color.dstFactor = WGPUBlendFactor_OneMinusSrcAlpha,
+  .color.operation = WGPUBlendOperation_Add,
+  .alpha.srcFactor = WGPUBlendFactor_Zero,
+  .alpha.dstFactor = WGPUBlendFactor_One,
+  .alpha.operation = WGPUBlendOperation_Add
+};
 WGPURenderPipeline Pipeline_make(
   WGPUDevice device,
   WGPUShaderModule shader,
-  size_t lightningBufferSize,
-  size_t uniformBufferSize,
+  WGPUBindGroupLayout bindGroupLayout,
   WGPUTextureFormat depthFormat) {
-  WGPUBlendState blendState = {
-    .color.srcFactor = WGPUBlendFactor_SrcAlpha,
-    .color.dstFactor = WGPUBlendFactor_OneMinusSrcAlpha,
-    .color.operation = WGPUBlendOperation_Add,
-    .alpha.srcFactor = WGPUBlendFactor_Zero,
-    .alpha.dstFactor = WGPUBlendFactor_One,
-    .alpha.operation = WGPUBlendOperation_Add
-  };
   WGPUColorTargetState colorTarget = {
     .nextInChain = 0,
     .format = WGPUTextureFormat_BGRA8Unorm,
@@ -41,52 +60,19 @@ WGPURenderPipeline Pipeline_make(
     .targetCount = 1,
     .targets = &colorTarget,
   };
-  WGPUDepthStencilState depthStencilState = Application_DepthStencilState_make();
+  WGPUDepthStencilState depthStencilState = DepthStencilState_make();
   depthStencilState.depthCompare = WGPUCompareFunction_Less;
   depthStencilState.depthWriteEnabled = true;
   depthStencilState.format = depthFormat;
   depthStencilState.stencilReadMask = 0;
   depthStencilState.stencilWriteMask = 0;
-  WGPUBindGroupLayout bindGroupLayout =
-    BindGroupLayout_make(device, lightningBufferSize, uniformBufferSize);
   WGPUPipelineLayoutDescriptor layoutDescriptor = {
     .nextInChain = 0,
     .bindGroupLayoutCount = 1,
     .bindGroupLayouts = &bindGroupLayout,
   };
   WGPUPipelineLayout layout = wgpuDeviceCreatePipelineLayout(device, &layoutDescriptor);
-  WGPUVertexAttribute vertexAttributes[] = {
-    {
-     // position
-      .shaderLocation = 0,
-     .format = WGPUVertexFormat_Float32x3,
-     .offset = 0,
-     },
-    {
-     // normal
-      .shaderLocation = 1,
-     .format = WGPUVertexFormat_Float32x3,
-     .offset = offsetof(Model_Vertex, normal),
-     },
-    {
-     // color
-      .shaderLocation = 2,
-     .format = WGPUVertexFormat_Float32x3,
-     .offset = offsetof(Model_Vertex, color),
-     },
-    {
-     // uv coordinates
-      .shaderLocation = 3,
-     .format = WGPUVertexFormat_Float32x2,
-     .offset = offsetof(Model_Vertex, uv),
-     }
-  };
-  WGPUVertexBufferLayout bufferLayout = {
-    .attributeCount = 4,
-    .attributes = vertexAttributes,
-    .arrayStride = sizeof(Model_Vertex),
-    .stepMode = WGPUVertexStepMode_Vertex,
-  };
+  WGPUVertexBufferLayout bufferLayout = Model_bufferLayoutMake();
   WGPURenderPipelineDescriptor pipelineDesc = {
     .nextInChain = 0,
     .fragment = &fragmentState,
@@ -109,4 +95,4 @@ WGPURenderPipeline Pipeline_make(
   return wgpuDeviceCreateRenderPipeline(device, &pipelineDesc);
 }
 
-#endif // Pipeline_H
+#endif // Pipeline_H_

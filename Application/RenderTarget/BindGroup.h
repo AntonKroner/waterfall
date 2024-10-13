@@ -1,7 +1,7 @@
 #ifndef BindGroup_H
 #define BindGroup_H
-#include "Texture.h"
 #include "webgpu.h"
+#include "./TTexture.h"
 
 WGPUBindGroup BindGroup_make(
   WGPUDevice device,

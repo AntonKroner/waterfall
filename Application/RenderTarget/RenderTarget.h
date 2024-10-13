@@ -5,10 +5,10 @@
 #include "linear/algebra.h"
 #include "../device.h"
 #include "./Model.h"
-#include "./Texture.h"
+#include "./TTexture.h"
 #include "./BindGroup.h"
 #include "./BindGroupLayout.h"
-#include "./Pipeline.h"
+#include "./PPipeline.h"
 
 typedef struct {
     WGPUShaderModule shader;
@@ -29,19 +29,6 @@ typedef struct {
       struct T;                \
   }
 
-static void buffers_attach(
-  RenderTarget target[static 1],
-  WGPUDevice device,
-  size_t vertexCount) {
-  WGPUBufferDescriptor descriptor = {
-    .nextInChain = 0,
-    .label = "vertex buffer",
-    .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Vertex,
-    .mappedAtCreation = false,
-    .size = vertexCount * sizeof(Model_Vertex),
-  };
-  target->vertex.buffer = wgpuDeviceCreateBuffer(device, &descriptor);
-}
 static void buffers_detach(RenderTarget target[static 1]) {
   wgpuBufferDestroy(target->vertex.buffer);
   wgpuBufferRelease(target->vertex.buffer);
@@ -62,26 +49,12 @@ RenderTarget* RenderTarget_create(
   if (result || (result = calloc(1, sizeof(*result)))) {
     result->shader = Application_device_ShaderModule(device, shaderPath);
     result->texture = Texture_create(device, texturePath);
-    Model model = Model_load(modelPath, offset);
-    result->vertex.count = model.vertexCount;
-    buffers_attach(result, device, result->vertex.count);
-    wgpuQueueWriteBuffer(
-      queue,
-      result->vertex.buffer,
-      0,
-      model.vertices,
-      result->vertex.count * sizeof(Model_Vertex));
-    Model_unload(&model);
-    // pipeline
+    result->vertex.buffer =
+      Model_bufferCreate(device, queue, modelPath, offset, &result->vertex.count);
     WGPUBindGroupLayout bindGroupLayout =
       BindGroupLayout_make(device, lightningBufferSize, uniformBufferSize);
-    result->pipeline = Pipeline_make(
-      device,
-      result->shader,
-      lightningBufferSize,
-      uniformBufferSize,
-      depthFormat);
-    // bind group
+    result->pipeline =
+      Pipeline_make(device, result->shader, bindGroupLayout, depthFormat);
     result->bindGroup = BindGroup_make(
       device,
       bindGroupLayout,

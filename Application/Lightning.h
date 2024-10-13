@@ -1,6 +1,5 @@
 #ifndef Application_Lightning_H_
 #define Application_Lightning_H_
-
 // #include <stdio.h>
 #include <stdbool.h>
 #include "webgpu.h"

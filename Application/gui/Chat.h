@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "cimgui/cimgui.h"
-#include "./Socket.h"
+#include "./SSocket.h"
 #include "./Messages.h"
 
 typedef struct {

@@ -1,5 +1,5 @@
-#ifndef Texture_H
-#define Texture_H
+#ifndef Texture_H_
+#define Texture_H_
 #include "webgpu.h"
 #include "../device.h"
 
@@ -37,4 +37,4 @@ void Texture_destroy(Texture texture) {
   wgpuSamplerRelease(texture.sampler);
 }
 
-#endif // Texture_H
+#endif // Texture_H_

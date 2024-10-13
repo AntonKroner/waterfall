@@ -123,12 +123,7 @@ static void onMouseScroll(GLFWwindow* window, double x, double y) {
     application->uniforms.cameraPosition = application->camera.position;
   }
 }
-static void onKeyPress(
-  GLFWwindow* window,
-  int key,
-  int /*scancode*/,
-  int /*action*/,
-  int /*mods*/) {
+static void onKeyPress(GLFWwindow* window, int key, int /*s*/, int /*a*/, int /*m*/) {
   Application* application = (Application*)glfwGetWindowUserPointer(window);
   if (application) {
     switch (key) {

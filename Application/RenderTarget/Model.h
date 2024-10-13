@@ -1,8 +1,8 @@
 #ifndef Model_H_
 #define Model_H_
-
 #include <stdlib.h>
 #include <stdio.h>
+#include "webgpu.h"
 #define TINYOBJ_LOADER_C_IMPLEMENTATION
 #include "tinyobj_loader_c.h"
 #include "linear/algebra.h"
@@ -94,6 +94,66 @@ Model Model_load(const char* const file, Vector3f offset) {
 void Model_unload(Model* model) {
   free(model->vertices);
   model->vertexCount = 0;
+}
+WGPUBuffer Model_bufferCreate(
+  WGPUDevice device,
+  WGPUQueue queue,
+  const char* const modelPath,
+  Vector3f offset,
+  size_t* vertexCount) {
+  Model model = Model_load(modelPath, offset);
+  *vertexCount = model.vertexCount;
+  WGPUBufferDescriptor descriptor = {
+    .nextInChain = 0,
+    .label = "vertex buffer",
+    .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Vertex,
+    .mappedAtCreation = false,
+    .size = model.vertexCount * sizeof(Model_Vertex),
+  };
+  WGPUBuffer buffer = wgpuDeviceCreateBuffer(device, &descriptor);
+  wgpuQueueWriteBuffer(
+    queue,
+    buffer,
+    0,
+    model.vertices,
+    model.vertexCount * sizeof(Model_Vertex));
+  Model_unload(&model);
+  return buffer;
+}
+const WGPUVertexAttribute vertexAttributes[] = {
+  {
+   // position
+    .shaderLocation = 0,
+   .format = WGPUVertexFormat_Float32x3,
+   .offset = 0,
+   },
+  {
+   // normal
+    .shaderLocation = 1,
+   .format = WGPUVertexFormat_Float32x3,
+   .offset = offsetof(Model_Vertex, normal),
+   },
+  {
+   // color
+    .shaderLocation = 2,
+   .format = WGPUVertexFormat_Float32x3,
+   .offset = offsetof(Model_Vertex, color),
+   },
+  {
+   // uv coordinates
+    .shaderLocation = 3,
+   .format = WGPUVertexFormat_Float32x2,
+   .offset = offsetof(Model_Vertex, uv),
+   }
+};
+WGPUVertexBufferLayout Model_bufferLayoutMake() {
+  WGPUVertexBufferLayout bufferLayout = {
+    .attributeCount = 4,
+    .attributes = vertexAttributes,
+    .arrayStride = sizeof(Model_Vertex),
+    .stepMode = WGPUVertexStepMode_Vertex,
+  };
+  return bufferLayout;
 }
 
 #endif // Model_H_
