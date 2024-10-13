@@ -53,8 +53,6 @@ RenderTarget* RenderTarget_create(
       Model_bufferCreate(device, queue, modelPath, offset, &result->vertex.count);
     WGPUBindGroupLayout bindGroupLayout =
       BindGroupLayout_make(device, lightningBufferSize, uniformBufferSize);
-    result->pipeline =
-      Pipeline_make(device, result->shader, bindGroupLayout, depthFormat);
     result->bindGroup = BindGroup_make(
       device,
       bindGroupLayout,
@@ -63,6 +61,8 @@ RenderTarget* RenderTarget_create(
       lightningBufferSize,
       uniformBuffer,
       uniformBufferSize);
+    result->pipeline =
+      Pipeline_make(device, result->shader, bindGroupLayout, depthFormat);
   }
   return result;
 }

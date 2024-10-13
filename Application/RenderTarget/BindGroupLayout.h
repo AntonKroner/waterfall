@@ -33,6 +33,7 @@ WGPUBindGroupLayout BindGroupLayout_make(
     BindGroupLayoutEntry_make(),
     BindGroupLayoutEntry_make(),
   };
+  bindingLayouts[0].binding = 0;
   bindingLayouts[0].buffer.type = WGPUBufferBindingType_Uniform;
   bindingLayouts[0].buffer.minBindingSize = uniformBufferSize;
   bindingLayouts[1].binding = 1;
