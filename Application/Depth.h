@@ -8,7 +8,6 @@ typedef struct {
     WGPUTexture texture;
     WGPUTextureView view;
 } Application_Depth;
-
 Application_Depth Application_Depth_attach(WGPUDevice device, int width, int height) {
   Application_Depth result = { .format = WGPUTextureFormat_Depth24Plus };
   WGPUTextureDescriptor depthTextureDescriptor = {

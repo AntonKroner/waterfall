@@ -6,8 +6,8 @@
 #include "../device.h"
 #include "./Model.h"
 #include "./TTexture.h"
-#include "./BindGroup.h"
-#include "./BindGroupLayout.h"
+#include "./BBindGroup.h"
+#include "./BBindGroupLayout.h"
 #include "./PPipeline.h"
 
 typedef struct {

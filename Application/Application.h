@@ -40,6 +40,7 @@ typedef struct {
     WGPUQueue queue;
     Application_Depth depth;
     RenderTarget* targets[TARGET_COUNT];
+    Player* player;
     Uniforms uniforms;
     WGPUBuffer uniformBuffer;
     Camera camera;
@@ -125,28 +126,41 @@ static void onMouseScroll(GLFWwindow* window, double x, double y) {
 }
 static void onKeyPress(GLFWwindow* window, int key, int /*s*/, int /*a*/, int /*m*/) {
   Application* application = (Application*)glfwGetWindowUserPointer(window);
+  Vector3f direction = Vector3f_make(0, 0, 0);
   if (application) {
     switch (key) {
       case GLFW_KEY_ESCAPE:
         glfwSetWindowShouldClose(window, GLFW_TRUE);
         break;
       case GLFW_KEY_W:
-        Application_Camera_moveTarget(&application->camera, Vector3f_make(1, 0, 0));
+        direction.components[0] = 1;
+        Application_Camera_moveTarget(&application->camera, direction);
+        Player_move(application->player, direction);
         break;
       case GLFW_KEY_S:
-        Application_Camera_moveTarget(&application->camera, Vector3f_make(-1, 0, 0));
+        direction.components[0] = -1;
+        Application_Camera_moveTarget(&application->camera, direction);
+        Player_move(application->player, direction);
         break;
       case GLFW_KEY_A:
-        Application_Camera_moveTarget(&application->camera, Vector3f_make(0, -1, 0));
+        direction.components[1] = -1;
+        Application_Camera_moveTarget(&application->camera, direction);
+        Player_move(application->player, direction);
         break;
       case GLFW_KEY_D:
-        Application_Camera_moveTarget(&application->camera, Vector3f_make(0, 1, 0));
+        direction.components[1] = 1;
+        Application_Camera_moveTarget(&application->camera, direction);
+        Player_move(application->player, direction);
         break;
       case GLFW_KEY_UP:
-        Application_Camera_moveTarget(&application->camera, Vector3f_make(0, 0, 1));
+        direction.components[2] = 1;
+        Application_Camera_moveTarget(&application->camera, direction);
+        Player_move(application->player, direction);
         break;
       case GLFW_KEY_DOWN:
-        Application_Camera_moveTarget(&application->camera, Vector3f_make(0, 0, -1));
+        direction.components[2] = -1;
+        Application_Camera_moveTarget(&application->camera, direction);
+        Player_move(application->player, direction);
         break;
       case GLFW_KEY_LEFT:
         Application_Camera_rotate(&application->camera, -1);
@@ -271,7 +285,7 @@ Application* Application_create(const size_t width, const size_t height, bool in
       result->uniformBuffer,
       sizeof(Uniforms),
       Vector3f_make(0, 3, 0));
-    result->targets[TARGET_COUNT - 1] = (RenderTarget*)Player_Create(
+    result->player = Player_Create(
       0,
       result->device,
       result->queue,
@@ -282,6 +296,7 @@ Application* Application_create(const size_t width, const size_t height, bool in
       sizeof(Uniforms),
       Vector3f_make(0, 4, 0),
       Vector3f_make(0, 4, 0));
+    result->targets[TARGET_COUNT - 1] = (RenderTarget*)result->player;
     if (!Application_gui_attach(result->window, result->device, result->depth.format)) {
       printf("gui problem!!\n");
     }

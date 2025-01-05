@@ -3,7 +3,7 @@ struct Matrices {
     	view: mat4x4f,
     	model: mat4x4f,
 };
-struct Global {
+struct Globals {
     matrices: Matrices,
     color: vec4f,
 		cameraPosition: vec3f,
@@ -25,12 +25,12 @@ struct VertexOutput {
 	@location(2) uv: vec2f,
 	@location(3) viewDirection: vec3f,
 };
-@group(0) @binding(0) var<uniform> globals: Global;
+@group(0) @binding(0) var<uniform> globals: Globals;
 // @group(0) @binding(5) var<uniform> uniforms: Uniforms;
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
 	var out: VertexOutput;
-	let worldPosition = vec4f(0, -1.0, 0, 0) * globals.time + globals.matrices.model * vec4f(in.position, 1.0);
+	let worldPosition = globals.matrices.model * vec4f(in.position, 1.0);
 	out.position = globals.matrices.projection * globals.matrices.view * worldPosition;	
 	out.normal = (globals.matrices.model * vec4f(in.normal, 0.0)).xyz;
 	out.color = in.color;
