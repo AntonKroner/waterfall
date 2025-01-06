@@ -43,10 +43,9 @@ Player* Player_Create(
   }
   return result;
 }
-void Player_move(Player* player, WGPUQueue queue, Vector3f direction) {
+void Player_move(Player player[static 1], WGPUQueue queue, const Vector3f direction) {
   const float speed = 0.1f;
-  player->position = Vector3f_add(player->position, Vector_scale(speed, direction));
-  Vector_print(player->position);
+  player->position = Vector_add(player->position, Vector_scale(speed, direction));
   wgpuQueueWriteBuffer(
     queue,
     player->super.uniform.buffer,

@@ -296,8 +296,8 @@ Application* Application_create(const size_t width, const size_t height, bool in
       result->queue,
       result->depth.format,
       result->globals.bind.groupLayout,
-      Vector3f_make(0, 4, 0),
-      Vector3f_make(0, 4, 0));
+      Vector3f_make(0, 0, 0),
+      result->camera.target);
     result->targets[TARGET_COUNT - 1] = (RenderTarget*)result->player;
     if (!Application_gui_attach(result->window, result->device, result->depth.format)) {
       printf("gui problem!!\n");

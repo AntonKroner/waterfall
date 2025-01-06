@@ -60,9 +60,8 @@ void Application_Camera_rotate(Camera camera[static 1], const float phi) {
     Vector_scale(norm, Vector3f_make(cosTheta * cosPhi, sinPhi * cosTheta, sinTheta)));
 }
 void Application_Camera_moveTarget(Camera camera[static 1], Vector3f direction) {
-  camera->target.components[0] += sensitivity * direction.components[0];
-  camera->target.components[1] += sensitivity * direction.components[1];
-  camera->target.components[2] += sensitivity * direction.components[2];
+  camera->target = Vector_add(camera->target, Vector_scale(sensitivity, direction));
+  camera->position = Vector_add(camera->position, Vector_scale(sensitivity, direction));
 }
 void Application_Camera_zoom(Camera camera[static 1], float /*x*/, float y) {
   camera->zoom += scrollSensitivity * -y;
