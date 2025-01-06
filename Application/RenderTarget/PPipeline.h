@@ -6,7 +6,8 @@
 WGPURenderPipeline Pipeline_make(
   WGPUDevice device,
   WGPUShaderModule shader,
-  WGPUBindGroupLayout bindGroupLayout,
+  size_t bindGroupCount,
+  WGPUBindGroupLayout bindGroupLayout[static bindGroupCount],
   WGPUTextureFormat depthFormat);
 
 static WGPUDepthStencilState DepthStencilState_make() {
@@ -43,7 +44,8 @@ const WGPUBlendState blendState = {
 WGPURenderPipeline Pipeline_make(
   WGPUDevice device,
   WGPUShaderModule shader,
-  WGPUBindGroupLayout bindGroupLayout,
+  size_t bindGroupCount,
+  WGPUBindGroupLayout bindGroupLayout[static bindGroupCount],
   WGPUTextureFormat depthFormat) {
   WGPUColorTargetState colorTarget = {
     .nextInChain = 0,
@@ -68,8 +70,9 @@ WGPURenderPipeline Pipeline_make(
   depthStencilState.stencilWriteMask = 0;
   WGPUPipelineLayoutDescriptor layoutDescriptor = {
     .nextInChain = 0,
-    .bindGroupLayoutCount = 1,
-    .bindGroupLayouts = &bindGroupLayout,
+    .label = "Pipeline layout Descriptor.",
+    .bindGroupLayoutCount = bindGroupCount,
+    .bindGroupLayouts = bindGroupLayout,
   };
   WGPUPipelineLayout layout = wgpuDeviceCreatePipelineLayout(device, &layoutDescriptor);
   WGPUVertexBufferLayout bufferLayout = Model_bufferLayoutMake();

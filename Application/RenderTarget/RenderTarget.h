@@ -4,6 +4,7 @@
 #include "webgpu.h"
 #include "linear/algebra.h"
 #include "../device.h"
+#include "./Bindgroups.h"
 #include "./Model.h"
 #include "./TTexture.h"
 #include "./BBindGroup.h"
@@ -19,6 +20,7 @@ typedef struct {
     } vertex;
     WGPURenderPipeline pipeline;
     WGPUBindGroup bindGroup;
+    Bindgroups groups;
 } RenderTarget;
 
 #define RenderTarget_EXTEND(T) \
@@ -38,10 +40,7 @@ RenderTarget* RenderTarget_create(
   WGPUDevice device,
   WGPUQueue queue,
   WGPUTextureFormat depthFormat,
-  WGPUBuffer lightningBuffer,
-  size_t lightningBufferSize,
-  WGPUBuffer uniformBuffer,
-  size_t uniformBufferSize,
+  WGPUBindGroupLayout globalBindGroup,
   Vector3f offset,
   const char* const shaderPath,
   const char* const modelPath,
@@ -51,18 +50,13 @@ RenderTarget* RenderTarget_create(
     result->texture = Texture_create(device, texturePath);
     result->vertex.buffer =
       Model_bufferCreate(device, queue, modelPath, offset, &result->vertex.count);
-    WGPUBindGroupLayout bindGroupLayout =
-      BindGroupLayout_make(device, lightningBufferSize, uniformBufferSize);
-    result->bindGroup = BindGroup_make(
-      device,
-      bindGroupLayout,
-      result->texture,
-      lightningBuffer,
-      lightningBufferSize,
-      uniformBuffer,
-      uniformBufferSize);
+    WGPUBindGroupLayout bindGroupLayouts[] = {
+      globalBindGroup,
+      BindGroupLayout_make(device),
+    };
+    result->bindGroup = BindGroup_make(device, bindGroupLayouts[1], result->texture);
     result->pipeline =
-      Pipeline_make(device, result->shader, bindGroupLayout, depthFormat);
+      Pipeline_make(device, result->shader, 2, bindGroupLayouts, depthFormat);
   }
   return result;
 }
@@ -82,7 +76,7 @@ void RenderTarget_render(RenderTarget target[static 1], WGPURenderPassEncoder re
     target->vertex.buffer,
     0,
     target->vertex.count * sizeof(Model_Vertex));
-  wgpuRenderPassEncoderSetBindGroup(renderPass, 0, target->bindGroup, 0, 0);
+  wgpuRenderPassEncoderSetBindGroup(renderPass, 1, target->bindGroup, 0, 0);
   wgpuRenderPassEncoderDraw(renderPass, target->vertex.count, 1, 0, 0);
 }
 

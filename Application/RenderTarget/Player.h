@@ -15,10 +15,7 @@ Player* Player_Create(
   WGPUDevice device,
   WGPUQueue queue,
   WGPUTextureFormat depthFormat,
-  WGPUBuffer lightningBuffer,
-  size_t lightningBufferSize,
-  WGPUBuffer uniformBuffer,
-  size_t uniformBufferSize,
+  WGPUBindGroupLayout globalBindGroup,
   Vector3f offset,
   Vector3f position) {
   if (result || (result = calloc(1, sizeof(*result)))) {
@@ -27,10 +24,7 @@ Player* Player_Create(
       device,
       queue,
       depthFormat,
-      lightningBuffer,
-      lightningBufferSize,
-      uniformBuffer,
-      uniformBufferSize,
+      globalBindGroup,
       offset,
       RESOURCE_DIR "/player/player.wgsl",
       RESOURCE_DIR "/mammoth/mammoth.obj",

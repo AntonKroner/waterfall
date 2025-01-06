@@ -6,7 +6,30 @@
 WGPUBindGroup BindGroup_make(
   WGPUDevice device,
   WGPUBindGroupLayout bindGroupLayout,
-  Texture texture,
+  Texture texture) {
+  WGPUBindGroupEntry bindings[] = {
+    {
+     .nextInChain = 0,
+     .binding = 0,
+     .textureView = texture.view,
+     },
+    {
+     .nextInChain = 0,
+     .binding = 1,
+     .sampler = texture.sampler,
+     },
+  };
+  WGPUBindGroupDescriptor bindGroupDescriptor = {
+    .nextInChain = 0,
+    .layout = bindGroupLayout,
+    .entryCount = 2,
+    .entries = bindings,
+  };
+  return wgpuDeviceCreateBindGroup(device, &bindGroupDescriptor);
+}
+WGPUBindGroup BindGroup_globalMake(
+  WGPUDevice device,
+  WGPUBindGroupLayout bindGroupLayout,
   WGPUBuffer lightningBuffer,
   size_t lightningBufferSize,
   WGPUBuffer uniformBuffer,
@@ -22,16 +45,6 @@ WGPUBindGroup BindGroup_make(
     {
      .nextInChain = 0,
      .binding = 1,
-     .textureView = texture.view,
-     },
-    {
-     .nextInChain = 0,
-     .binding = 2,
-     .sampler = texture.sampler,
-     },
-    {
-     .nextInChain = 0,
-     .binding = 3,
      .buffer = lightningBuffer,
      .offset = 0,
      .size = lightningBufferSize,
@@ -40,7 +53,7 @@ WGPUBindGroup BindGroup_make(
   WGPUBindGroupDescriptor bindGroupDescriptor = {
     .nextInChain = 0,
     .layout = bindGroupLayout,
-    .entryCount = 4,
+    .entryCount = 2,
     .entries = bindings,
   };
   return wgpuDeviceCreateBindGroup(device, &bindGroupDescriptor);

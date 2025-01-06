@@ -41,9 +41,9 @@ struct LightingUniforms {
 		diffusivity: f32,
 		specularity: f32,
 }
-@group(0) @binding(1) var colorbaseTexture: texture_2d<f32>;
-@group(0) @binding(2) var textureSampler: sampler;
-@group(0) @binding(3) var<uniform> lightning: LightingUniforms;
+@group(1) @binding(0) var colorbaseTexture: texture_2d<f32>;
+@group(1) @binding(1) var textureSampler: sampler;
+@group(0) @binding(1) var<uniform> lightning: LightingUniforms;
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
   let colorbase =  textureSample(colorbaseTexture, textureSampler, in.uv).rgb;

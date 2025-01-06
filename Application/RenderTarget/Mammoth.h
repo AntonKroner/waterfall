@@ -12,10 +12,7 @@ Mammoth* Mammoth_Create(
   WGPUDevice device,
   WGPUQueue queue,
   WGPUTextureFormat depthFormat,
-  WGPUBuffer lightningBuffer,
-  size_t lightningBufferSize,
-  WGPUBuffer uniformBuffer,
-  size_t uniformBufferSize,
+  WGPUBindGroupLayout globalBindGroup,
   Vector3f offset) {
   if (result || (result = calloc(1, sizeof(*result)))) {
     RenderTarget_create(
@@ -23,10 +20,7 @@ Mammoth* Mammoth_Create(
       device,
       queue,
       depthFormat,
-      lightningBuffer,
-      lightningBufferSize,
-      uniformBuffer,
-      uniformBufferSize,
+      globalBindGroup,
       offset,
       RESOURCE_DIR "/lightning/specularity.wgsl",
       RESOURCE_DIR "/mammoth/mammoth.obj",
