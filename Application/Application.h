@@ -145,32 +145,32 @@ static void onKeyPress(GLFWwindow* window, int key, int /*s*/, int /*a*/, int /*
       case GLFW_KEY_W:
         direction.components[0] = 1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, direction);
+        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_S:
         direction.components[0] = -1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, direction);
+        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_A:
         direction.components[1] = -1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, direction);
+        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_D:
         direction.components[1] = 1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, direction);
+        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_UP:
         direction.components[2] = 1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, direction);
+        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_DOWN:
         direction.components[2] = -1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, direction);
+        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_LEFT:
         Application_Camera_rotate(&application->camera, -1);

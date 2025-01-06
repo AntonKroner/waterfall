@@ -11,6 +11,7 @@ struct Globals {
 };
 struct Uniforms {
 		position: vec3f,
+		_pad: f32,
 };
 struct VertexInput {
 	@location(0) position: vec3f,
@@ -26,11 +27,11 @@ struct VertexOutput {
 	@location(3) viewDirection: vec3f,
 };
 @group(0) @binding(0) var<uniform> globals: Globals;
-// @group(0) @binding(5) var<uniform> uniforms: Uniforms;
+@group(1) @binding(2) var<uniform> uniforms: Uniforms;
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
 	var out: VertexOutput;
-	let worldPosition = globals.matrices.model * vec4f(in.position, 1.0);
+	let worldPosition = vec4f(uniforms.position, 0)+ globals.matrices.model * vec4f(in.position, 1.0);
 	out.position = globals.matrices.projection * globals.matrices.view * worldPosition;	
 	out.normal = (globals.matrices.model * vec4f(in.normal, 0.0)).xyz;
 	out.color = in.color;

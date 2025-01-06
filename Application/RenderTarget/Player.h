@@ -7,6 +7,7 @@
 
 typedef struct {
     Vector3f position;
+    float _pad;
 } Player_Uniforms;
 typedef RenderTarget_EXTEND({ Vector3f position; }) Player;
 
@@ -19,12 +20,21 @@ Player* Player_Create(
   Vector3f offset,
   Vector3f position) {
   if (result || (result = calloc(1, sizeof(*result)))) {
+    WGPUBufferDescriptor descriptor = {
+      .nextInChain = 0,
+      .label = "Player uniform buffer",
+      .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Uniform,
+      .mappedAtCreation = false,
+      .size = sizeof(Player_Uniforms),
+    };
     RenderTarget_create(
       &result->super,
       device,
       queue,
       depthFormat,
       globalBindGroup,
+      descriptor.size,
+      wgpuDeviceCreateBuffer(device, &descriptor),
       offset,
       RESOURCE_DIR "/player/player.wgsl",
       RESOURCE_DIR "/mammoth/mammoth.obj",
@@ -33,9 +43,16 @@ Player* Player_Create(
   }
   return result;
 }
-void Player_move(Player* player, Vector3f direction) {
+void Player_move(Player* player, WGPUQueue queue, Vector3f direction) {
   const float speed = 0.1f;
   player->position = Vector3f_add(player->position, Vector_scale(speed, direction));
+  Vector_print(player->position);
+  wgpuQueueWriteBuffer(
+    queue,
+    player->super.uniform.buffer,
+    0,
+    &player->position,
+    sizeof(Player_Uniforms));
 }
 
 #endif // Player_H_

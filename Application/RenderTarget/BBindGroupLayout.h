@@ -23,8 +23,9 @@ static WGPUBindGroupLayoutEntry BindGroupLayoutEntry_make() {
   };
   return result;
 }
-WGPUBindGroupLayout BindGroupLayout_make(WGPUDevice device) {
-  WGPUBindGroupLayoutEntry bindingLayouts[2] = {
+WGPUBindGroupLayout BindGroupLayout_make(WGPUDevice device, size_t uniformSize) {
+  WGPUBindGroupLayoutEntry bindingLayouts[3] = {
+    BindGroupLayoutEntry_make(),
     BindGroupLayoutEntry_make(),
     BindGroupLayoutEntry_make(),
   };
@@ -35,9 +36,12 @@ WGPUBindGroupLayout BindGroupLayout_make(WGPUDevice device) {
   bindingLayouts[1].binding = 1;
   bindingLayouts[1].visibility = WGPUShaderStage_Fragment;
   bindingLayouts[1].sampler.type = WGPUSamplerBindingType_Filtering;
+  bindingLayouts[2].binding = 2;
+  bindingLayouts[2].buffer.type = WGPUBufferBindingType_Uniform;
+  bindingLayouts[2].buffer.minBindingSize = uniformSize;
   WGPUBindGroupLayoutDescriptor bindGroupLayoutDescriptor = {
     .nextInChain = 0,
-    .entryCount = 2,
+    .entryCount = 3,
     .entries = bindingLayouts,
   };
 

@@ -15,12 +15,21 @@ Fourareen* Fourareen_Create(
   WGPUBindGroupLayout globalBindGroup,
   Vector3f offset) {
   if (result || (result = calloc(1, sizeof(*result)))) {
+    WGPUBufferDescriptor descriptor = {
+      .nextInChain = 0,
+      .label = "Fourareen buffer",
+      .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Uniform,
+      .mappedAtCreation = false,
+      .size = 8,
+    };
     RenderTarget_create(
       &result->super,
       device,
       queue,
       depthFormat,
       globalBindGroup,
+      descriptor.size,
+      wgpuDeviceCreateBuffer(device, &descriptor),
       offset,
       RESOURCE_DIR "/lightning/specularity.wgsl",
       RESOURCE_DIR "/fourareen/fourareen.obj",

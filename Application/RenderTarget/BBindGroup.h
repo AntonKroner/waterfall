@@ -6,7 +6,9 @@
 WGPUBindGroup BindGroup_make(
   WGPUDevice device,
   WGPUBindGroupLayout bindGroupLayout,
-  Texture texture) {
+  Texture texture,
+  WGPUBuffer uniformBuffer,
+  size_t uniformSize) {
   WGPUBindGroupEntry bindings[] = {
     {
      .nextInChain = 0,
@@ -18,11 +20,18 @@ WGPUBindGroup BindGroup_make(
      .binding = 1,
      .sampler = texture.sampler,
      },
+    {
+     .nextInChain = 0,
+     .binding = 2,
+     .buffer = uniformBuffer,
+     .offset = 0,
+     .size = uniformSize,
+     }
   };
   WGPUBindGroupDescriptor bindGroupDescriptor = {
     .nextInChain = 0,
     .layout = bindGroupLayout,
-    .entryCount = 2,
+    .entryCount = 3,
     .entries = bindings,
   };
   return wgpuDeviceCreateBindGroup(device, &bindGroupDescriptor);

@@ -18,9 +18,13 @@ typedef struct {
         WGPUBuffer buffer;
         size_t count;
     } vertex;
-    WGPURenderPipeline pipeline;
+    struct {
+        WGPUBuffer buffer;
+        size_t size;
+    } uniform;
     WGPUBindGroup bindGroup;
     Bindgroups groups;
+    WGPURenderPipeline pipeline;
 } RenderTarget;
 
 #define RenderTarget_EXTEND(T) \
@@ -41,6 +45,8 @@ RenderTarget* RenderTarget_create(
   WGPUQueue queue,
   WGPUTextureFormat depthFormat,
   WGPUBindGroupLayout globalBindGroup,
+  size_t uniformSize,
+  WGPUBuffer uniformBuffer,
   Vector3f offset,
   const char* const shaderPath,
   const char* const modelPath,
@@ -50,11 +56,18 @@ RenderTarget* RenderTarget_create(
     result->texture = Texture_create(device, texturePath);
     result->vertex.buffer =
       Model_bufferCreate(device, queue, modelPath, offset, &result->vertex.count);
+    result->uniform.buffer = uniformBuffer;
+    result->uniform.size = uniformSize;
     WGPUBindGroupLayout bindGroupLayouts[] = {
       globalBindGroup,
-      BindGroupLayout_make(device),
+      BindGroupLayout_make(device, uniformSize),
     };
-    result->bindGroup = BindGroup_make(device, bindGroupLayouts[1], result->texture);
+    result->bindGroup = BindGroup_make(
+      device,
+      bindGroupLayouts[1],
+      result->texture,
+      uniformBuffer,
+      uniformSize);
     result->pipeline =
       Pipeline_make(device, result->shader, 2, bindGroupLayouts, depthFormat);
   }
