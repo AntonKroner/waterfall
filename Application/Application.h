@@ -6,31 +6,24 @@
 #include "webgpu.h"
 #include "GLFW/glfw3.h"
 #include "glfw3webgpu/glfw3webgpu.h"
-#include "cimgui/cimgui.h"
 #include "linear/algebra.h"
 #include "./adapter.h"
 #include "./device.h"
 #include "./RenderPass.h"
 #include "./Depth.h"
+#include "./Uniform/Uniform.h"
 #include "./Lightning.h"
 #include "./RenderTarget/RenderTarget.h"
 #include "./RenderTarget/Fourareen.h"
 #include "./RenderTarget/Mammoth.h"
+#include "./RenderTarget/Player.h"
+#include "./RenderTarget/BBindGroup.h"
+#include "./RenderTarget/BBindGroupLayout.h"
 #include "./Camera.h"
 #include "./gui.h"
 
-#define TARGET_COUNT (3)
+#define TARGET_COUNT (4)
 
-typedef struct {
-    struct {
-        Matrix4f projection;
-        Matrix4f view;
-        Matrix4f model;
-    } matrices;
-    Vector4f color;
-    Vector3f cameraPosition;
-    float time;
-} Uniforms;
 typedef struct {
     GLFWwindow* window;
     WGPUInstance instance;
@@ -40,7 +33,14 @@ typedef struct {
     WGPUQueue queue;
     Application_Depth depth;
     RenderTarget* targets[TARGET_COUNT];
-    Uniforms uniforms;
+    Player* player;
+    struct {
+        Uniform_Global uniform;
+        struct {
+            WGPUBindGroupLayout groupLayout;
+            WGPUBindGroup group;
+        } bind;
+    } globals;
     WGPUBuffer uniformBuffer;
     Camera camera;
     Application_Lighting lightning;
@@ -56,7 +56,8 @@ static void surface_attach(Application application[static 1], size_t width, size
     .nextInChain = 0,
     .width = width,
     .height = height,
-    .format = application->capabilities.formats[0],
+    .format =
+      23, // meant to be: application->capabilities.formats[0], but for some reason it doesn't work for every adapter type
     .viewFormatCount = 0,
     .viewFormats = 0,
     .usage = WGPUTextureUsage_RenderAttachment,
@@ -67,33 +68,37 @@ static void surface_attach(Application application[static 1], size_t width, size
   wgpuSurfaceConfigure(application->surface, &configuration);
 }
 static void uniform_attach(Application application[static 1], double width, double height) {
-  application->camera.position.components[0] = -2.0f;
-  application->camera.position.components[1] = -3.0f;
-  application->camera.zoom = -1.2;
-  Uniforms uniforms = {
+  Application_Camera_initiate(&application->camera, M_PI * 45 / 180, M_PI * 45 / 180);
+  application->camera.zoom = 1.0f;
+  Uniform_Global uniform = {
     .matrices.model = Matrix4f_transpose(Matrix4f_diagonal(1.0)),
-    .matrices.view = Matrix4f_transpose(Matrix4f_lookAt(
-      Vector3f_make(-2.0f, -3.0f, 2.0f),
-      Vector3f_fill(0.0f),
-      Vector3f_make(0, 0, 1.0f))),
+    .matrices.view = Matrix4f_transpose(Application_Camera_viewGet(application->camera)),
     .matrices.projection =
       Matrix4f_transpose(Matrix4f_perspective(45, width / height, 0.01f, 100.0f)),
     .time = 0.0f,
-    .cameraPosition = Vector3f_make(
-      application->camera.position.components[0],
-      application->camera.position.components[1],
-      1.0f),
+    .cameraPosition = application->camera.position,
     .color = Vector4f_make(0.0f, 1.0f, 0.4f, 1.0f),
   };
-  application->uniforms = uniforms;
+  application->globals.uniform = uniform;
   WGPUBufferDescriptor descriptor = {
     .nextInChain = 0,
     .label = "uniform buffer",
     .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Uniform,
     .mappedAtCreation = false,
-    .size = sizeof(Uniforms),
+    .size = sizeof(Uniform_Global),
   };
   application->uniformBuffer = wgpuDeviceCreateBuffer(application->device, &descriptor);
+  application->globals.bind.groupLayout = BindGroupLayout_globalMake(
+    application->device,
+    sizeof(Application_Lighting_Uniforms),
+    sizeof(Uniform_Global));
+  application->globals.bind.group = BindGroup_globalMake(
+    application->device,
+    application->globals.bind.groupLayout,
+    application->lightning.buffer,
+    sizeof(Application_Lighting_Uniforms),
+    application->uniformBuffer,
+    sizeof(Uniform_Global));
 }
 static void uniform_detach(Application application[static 1]) {
   wgpuBufferDestroy(application->uniformBuffer);
@@ -106,39 +111,81 @@ static void onResize(GLFWwindow* window, int width, int height) {
     surface_attach(application, width, height);
     Application_Depth_detach(application->depth);
     application->depth = Application_Depth_attach(application->device, width, height);
-    application->uniforms.matrices.projection = Matrix4f_transpose(
+    application->globals.uniform.matrices.projection = Matrix4f_transpose(
       Matrix4f_perspective(45, ((float)width / (float)height), 0.01f, 100.0f));
   }
 }
 static void onMouseMove(GLFWwindow* window, double x, double y) {
-  Application* application = (Application*)glfwGetWindowUserPointer(window);
-  if (application) {
-    Application_Camera_move(&application->camera, (float)x, (float)y);
-    application->uniforms.matrices.view =
-      Matrix4f_transpose(Application_Camera_viewGet(application->camera));
-    application->uniforms.cameraPosition = application->camera.position;
+  if (Application_gui_isCapturing()) {
+    return;
   }
 }
 static void onMouseButton(GLFWwindow* window, int button, int action, int /* mods*/) {
-  ImGuiIO* io = ImGui_GetIO();
-  if (io->WantCaptureMouse) {
+  if (Application_gui_isCapturing()) {
     return;
-  }
-  Application* application = (Application*)glfwGetWindowUserPointer(window);
-  if (application) {
-    double x = 0;
-    double y = 0;
-    glfwGetCursorPos(window, &x, &y);
-    Application_Camera_activate(&application->camera, button, action, (float)x, (float)y);
   }
 }
 static void onMouseScroll(GLFWwindow* window, double x, double y) {
   Application* application = (Application*)glfwGetWindowUserPointer(window);
   if (application) {
     Application_Camera_zoom(&application->camera, (float)x, (float)y);
-    application->uniforms.matrices.view =
+    application->globals.uniform.matrices.view =
       Matrix4f_transpose(Application_Camera_viewGet(application->camera));
-    application->uniforms.cameraPosition = application->camera.position;
+    application->globals.uniform.cameraPosition = application->camera.position;
+  }
+}
+static void onKeyPress(GLFWwindow* window, int key, int /*s*/, int /*a*/, int /*m*/) {
+  Application* application = (Application*)glfwGetWindowUserPointer(window);
+  Vector3f direction = Vector3f_make(0, 0, 0);
+  if (application) {
+    switch (key) {
+      case GLFW_KEY_ESCAPE:
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+        break;
+      case GLFW_KEY_W:
+        direction.components[0] = 1;
+        Application_Camera_moveTarget(&application->camera, direction);
+        Player_move(application->player, application->queue, direction);
+        break;
+      case GLFW_KEY_S:
+        direction.components[0] = -1;
+        Application_Camera_moveTarget(&application->camera, direction);
+        Player_move(application->player, application->queue, direction);
+        break;
+      case GLFW_KEY_A:
+        direction.components[1] = -1;
+        Application_Camera_moveTarget(&application->camera, direction);
+        Player_move(application->player, application->queue, direction);
+        break;
+      case GLFW_KEY_D:
+        direction.components[1] = 1;
+        Application_Camera_moveTarget(&application->camera, direction);
+        Player_move(application->player, application->queue, direction);
+        break;
+      case GLFW_KEY_UP:
+        direction.components[2] = 1;
+        Application_Camera_moveTarget(&application->camera, direction);
+        Player_move(application->player, application->queue, direction);
+        break;
+      case GLFW_KEY_DOWN:
+        direction.components[2] = -1;
+        Application_Camera_moveTarget(&application->camera, direction);
+        Player_move(application->player, application->queue, direction);
+        break;
+      case GLFW_KEY_LEFT:
+        Application_Camera_rotate(&application->camera, -1);
+        break;
+      case GLFW_KEY_RIGHT:
+        Application_Camera_rotate(&application->camera, 1);
+        break;
+      case GLFW_KEY_SPACE:
+        Application_Camera_initiate(&application->camera, M_PI * 45 / 180, M_PI * 45 / 180);
+        application->camera.zoom = 1;
+        break;
+    }
+    application->globals.uniform.matrices.view =
+      Matrix4f_transpose(Application_Camera_viewGet(application->camera));
+    application->globals.uniform.cameraPosition = application->camera.position;
   }
 }
 static WGPUTextureView nextView(WGPUSurface surface) {
@@ -172,6 +219,7 @@ static void attachCallbacks(Application application[static 1]) {
   glfwSetCursorPosCallback(application->window, onMouseMove);
   glfwSetMouseButtonCallback(application->window, onMouseButton);
   glfwSetScrollCallback(application->window, onMouseScroll);
+  glfwSetKeyCallback(application->window, onKeyPress);
 }
 Application* Application_create(const size_t width, const size_t height, bool inspect) {
   WGPUInstanceDescriptor descriptor = { .nextInChain = 0 };
@@ -225,28 +273,32 @@ Application* Application_create(const size_t width, const size_t height, bool in
     result->depth = Application_Depth_attach(result->device, width, height);
     result->lightning = Application_Lightning_create(result->device);
     uniform_attach(result, width, height);
-    for (size_t i = 0; TARGET_COUNT - 1 > i; i++) {
+    for (size_t i = 0; TARGET_COUNT - 2 > i; i++) {
       result->targets[i] = (RenderTarget*)Fourareen_Create(
         0,
         result->device,
         result->queue,
         result->depth.format,
-        result->lightning.buffer,
-        sizeof(Application_Lighting_Uniforms),
-        result->uniformBuffer,
-        sizeof(Uniforms),
+        result->globals.bind.groupLayout,
         Vector3f_make(i * 5, 0, 0));
     }
-    result->targets[TARGET_COUNT - 1] = (RenderTarget*)Mammoth_Create(
+    result->targets[TARGET_COUNT - 2] = (RenderTarget*)Mammoth_Create(
       0,
       result->device,
       result->queue,
       result->depth.format,
-      result->lightning.buffer,
-      sizeof(Application_Lighting_Uniforms),
-      result->uniformBuffer,
-      sizeof(Uniforms),
+      result->globals.bind.groupLayout,
+
       Vector3f_make(0, 3, 0));
+    result->player = Player_Create(
+      0,
+      result->device,
+      result->queue,
+      result->depth.format,
+      result->globals.bind.groupLayout,
+      Vector3f_make(0, 0, 0),
+      result->camera.target);
+    result->targets[TARGET_COUNT - 1] = (RenderTarget*)result->player;
     if (!Application_gui_attach(result->window, result->device, result->depth.format)) {
       printf("gui problem!!\n");
     }
@@ -265,13 +317,13 @@ void Application_render(Application application[static 1]) {
     perror("Cannot acquire next swap chain texture\n");
   }
   else {
-    application->uniforms.time = (float)glfwGetTime();
+    application->globals.uniform.time = (float)glfwGetTime();
     wgpuQueueWriteBuffer(
       application->queue,
       application->uniformBuffer,
       0,
-      &application->uniforms,
-      sizeof(Uniforms));
+      &application->globals.uniform,
+      sizeof(Uniform_Global));
     WGPUCommandEncoderDescriptor commandEncoderDesc = {
       .nextInChain = 0,
       .label = "Command Encoder",
@@ -280,10 +332,11 @@ void Application_render(Application application[static 1]) {
       wgpuDeviceCreateCommandEncoder(application->device, &commandEncoderDesc);
     WGPURenderPassEncoder renderPass =
       Application_RenderPassEncoder_make(encoder, nextTexture, application->depth.view);
+    wgpuRenderPassEncoderSetBindGroup(renderPass, 0, application->globals.bind.group, 0, 0);
     for (size_t i = 0; TARGET_COUNT > i; i++) {
       RenderTarget_render(application->targets[i], renderPass);
     }
-    Application_gui_render(renderPass, &application->lightning);
+    Application_gui_render(renderPass, &application->lightning, &application->camera);
     wgpuRenderPassEncoderEnd(renderPass);
     wgpuTextureViewRelease(nextTexture);
     WGPUCommandBufferDescriptor cmdBufferDescriptor = {

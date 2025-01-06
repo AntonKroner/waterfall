@@ -3,11 +3,15 @@ struct Matrices {
     	view: mat4x4f,
     	model: mat4x4f,
 };
-struct Uniforms {
+struct Globals {
     matrices: Matrices,
     color: vec4f,
 		cameraPosition: vec3f,
     time: f32,
+};
+struct Uniforms {
+		position: vec3f,
+		_pad: f32,
 };
 struct VertexInput {
 	@location(0) position: vec3f,
@@ -22,16 +26,17 @@ struct VertexOutput {
 	@location(2) uv: vec2f,
 	@location(3) viewDirection: vec3f,
 };
-@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+@group(0) @binding(0) var<uniform> globals: Globals;
+@group(1) @binding(2) var<uniform> uniforms: Uniforms;
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
 	var out: VertexOutput;
-	let worldPosition = uniforms.matrices.model * vec4f(in.position, 1.0);
-	out.position = uniforms.matrices.projection * uniforms.matrices.view * worldPosition;	
-	out.normal = (uniforms.matrices.model * vec4f(in.normal, 0.0)).xyz;
+	let worldPosition = vec4f(uniforms.position, 0)+ globals.matrices.model * vec4f(in.position, 1.0);
+	out.position = globals.matrices.projection * globals.matrices.view * worldPosition;	
+	out.normal = (globals.matrices.model * vec4f(in.normal, 0.0)).xyz;
 	out.color = in.color;
 	out.uv = in.uv;
-	out.viewDirection = uniforms.cameraPosition - worldPosition.xyz;
+	out.viewDirection = globals.cameraPosition - worldPosition.xyz;
 	return out;
 }
 struct LightingUniforms {
@@ -58,5 +63,5 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4f {
 			color += colorbase * lightning.diffusivity * diffuse + lightning.specularity * specular;
   	}
 	let colorCorrected = pow(color, vec3f(2.2));
-	return vec4f(colorCorrected, uniforms.color.a);
+	return vec4f(colorCorrected, globals.color.a);
 }
