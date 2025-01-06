@@ -32,6 +32,13 @@ export default {
 		return result
 	},
 }
+
+interface Player {
+	id: number
+	name: string
+	position: [number, number, number]
+}
+
 export class Realm implements DurableObject {
 	#messages?: string[]
 	get messages(): Promise<string[]> {
@@ -46,17 +53,21 @@ export class Realm implements DurableObject {
 			this.state.storage.put("messages", m)
 		})
 	}
+	players: Player[] = []
 	constructor(private readonly state: DurableObjectState, readonly environment: Environment) {}
 
 	async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
 		const sockets = this.state.getWebSockets()
-		const id = socket.deserializeAttachment()
+		const player: { id: number; name: string } = socket.deserializeAttachment()
 		console.log("message: ", message)
 		if (message == "logout") {
 			socket.close(1000, "user requested logout")
-			sockets.forEach(s => s != socket && s.send(`${id}: logged out`))
+			sockets.forEach(s => s != socket && s.send(`${player.name}: logged out`))
+		} else if (message == "moved") {
+			this.players[player.id].position[0] += 0.1
+			sockets.forEach(s => s.send(`player ${player.id}: ${this.players[player.id].position}`))
 		} else {
-			const post = `${id}: ${message}`
+			const post = `${player.name}: ${message}`
 			this.messages = post
 			sockets.forEach(s => s.send(post))
 		}
@@ -79,9 +90,13 @@ export class Realm implements DurableObject {
 		else {
 			const [client, server] = Object.values(new WebSocketPair())
 			this.state.acceptWebSocket(server)
-			server.serializeAttachment(user)
 			;(await this.messages).map(m => server.send(m))
+			const newPlayer: Player = { id: this.players.length, name: user, position: [0, 0, 0] }
+			this.players.push(newPlayer)
+			server.serializeAttachment({ id: newPlayer.id, name: user })
+			this.players.map((p, i) => server.send(`player ${i}: ${p.position}`))
 			this.state.getWebSockets().map(s => s.send(`${user}: logged in`))
+			this.state.getWebSockets().map(s => s.send(`player ${newPlayer.id}: ${newPlayer.position}`))
 			result = new Response(null, { status: 101, webSocket: client })
 		}
 		return result

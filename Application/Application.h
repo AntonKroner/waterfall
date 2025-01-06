@@ -1,5 +1,6 @@
 #ifndef Application_H_
 #define Application_H_
+#include "gui/SSocket.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -21,8 +22,10 @@
 #include "./RenderTarget/BBindGroupLayout.h"
 #include "./Camera.h"
 #include "./gui.h"
+#include <string.h>
 
 #define TARGET_COUNT (4)
+#define PLAYERS_MAX (10)
 
 typedef struct {
     GLFWwindow* window;
@@ -35,6 +38,10 @@ typedef struct {
     RenderTarget* targets[TARGET_COUNT];
     Player* player;
     struct {
+        size_t count;
+        Player* players[PLAYERS_MAX];
+    } players;
+    struct {
         Uniform_Global uniform;
         struct {
             WGPUBindGroupLayout groupLayout;
@@ -44,6 +51,7 @@ typedef struct {
     WGPUBuffer uniformBuffer;
     Camera camera;
     Application_Lighting lightning;
+    Gui* gui;
 } Application;
 
 Application* Application_create(const size_t width, const size_t height, bool inspect);
@@ -137,7 +145,7 @@ static void onMouseScroll(GLFWwindow* window, double x, double y) {
 static void onKeyPress(GLFWwindow* window, int key, int /*s*/, int /*a*/, int /*m*/) {
   Application* application = (Application*)glfwGetWindowUserPointer(window);
   Vector3f direction = Vector3f_make(0, 0, 0);
-  if (application) {
+  if (application && !application->gui->io->WantCaptureKeyboard) {
     switch (key) {
       case GLFW_KEY_ESCAPE:
         glfwSetWindowShouldClose(window, GLFW_TRUE);
@@ -182,6 +190,9 @@ static void onKeyPress(GLFWwindow* window, int key, int /*s*/, int /*a*/, int /*
         Application_Camera_initiate(&application->camera, M_PI * 45 / 180, M_PI * 45 / 180);
         application->camera.zoom = 1;
         break;
+    }
+    if (application->gui->chat->socket) {
+      Socket_enqueue(application->gui->chat->socket, strdup("moved"));
     }
     application->globals.uniform.matrices.view =
       Matrix4f_transpose(Application_Camera_viewGet(application->camera));
@@ -288,7 +299,6 @@ Application* Application_create(const size_t width, const size_t height, bool in
       result->queue,
       result->depth.format,
       result->globals.bind.groupLayout,
-
       Vector3f_make(0, 3, 0));
     result->player = Player_Create(
       0,
@@ -296,12 +306,13 @@ Application* Application_create(const size_t width, const size_t height, bool in
       result->queue,
       result->depth.format,
       result->globals.bind.groupLayout,
-      Vector3f_make(0, 0, 0),
+      Vector3f_fill(0),
       result->camera.target);
     result->targets[TARGET_COUNT - 1] = (RenderTarget*)result->player;
     if (!Application_gui_attach(result->window, result->device, result->depth.format)) {
       printf("gui problem!!\n");
     }
+    result->gui = &gui;
     Application_Lightning_update(&result->lightning, result->queue);
   }
   return result;
@@ -337,6 +348,31 @@ void Application_render(Application application[static 1]) {
       RenderTarget_render(application->targets[i], renderPass);
     }
     Application_gui_render(renderPass, &application->lightning, &application->camera);
+
+    {
+      char* message =
+        application->gui->chat->messages->data[application->gui->chat->messages->length];
+      if (!strncmp(message, "player ", 7)) {
+        size_t playerId = atoi(&message[7]);
+        if (playerId >= application->players.count) {
+          application->players.players[application->players.count++] = Player_Create(
+            0,
+            application->device,
+            application->queue,
+            application->depth.format,
+            application->globals.bind.groupLayout,
+            Vector3f_fill(0),
+            Vector3f_make(atoi(&message[10]), 0, 0));
+        }
+        else {
+          Player_move(
+            application->players.players[playerId],
+            application->queue,
+            Vector3f_make(0.1, 0, 0));
+        }
+      }
+    }
+
     wgpuRenderPassEncoderEnd(renderPass);
     wgpuTextureViewRelease(nextTexture);
     WGPUCommandBufferDescriptor cmdBufferDescriptor = {
