@@ -53,19 +53,19 @@ export class Realm implements DurableObject {
 			this.state.storage.put("messages", m)
 		})
 	}
-	players: Player[] = []
 	constructor(private readonly state: DurableObjectState, readonly environment: Environment) {}
 
 	async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
 		const sockets = this.state.getWebSockets()
-		const player: { id: number; name: string } = socket.deserializeAttachment()
+		const player: Player = socket.deserializeAttachment()
 		console.log("message: ", message)
 		if (message == "logout") {
 			socket.close(1000, "user requested logout")
 			sockets.forEach(s => s != socket && s.send(`${player.name}: logged out`))
 		} else if (message == "moved") {
-			this.players[player.id].position[0] += 0.1
-			sockets.forEach(s => s.send(`player ${player.id}: ${this.players[player.id].position}`))
+			player.position[0] += 0.1
+			sockets.forEach(s => s.send(`player ${player.id}: ${player.position}`))
+			socket.serializeAttachment(player)
 		} else {
 			const post = `${player.name}: ${message}`
 			this.messages = post
@@ -91,12 +91,16 @@ export class Realm implements DurableObject {
 			const [client, server] = Object.values(new WebSocketPair())
 			this.state.acceptWebSocket(server)
 			;(await this.messages).map(m => server.send(m))
-			const newPlayer: Player = { id: this.players.length, name: user, position: [0, 0, 0] }
-			this.players.push(newPlayer)
-			server.serializeAttachment({ id: newPlayer.id, name: user })
-			this.players.map((p, i) => server.send(`player ${i}: ${p.position}`))
-			this.state.getWebSockets().map(s => s.send(`${user}: logged in`))
-			this.state.getWebSockets().map(s => s.send(`player ${newPlayer.id}: ${newPlayer.position}`))
+			const sockets = this.state.getWebSockets()
+			const newPlayer: Player = { id: sockets.length - 1, name: user, position: [0, 0, 0] }
+			server.serializeAttachment(newPlayer)
+			sockets.map(s => {
+				s.send(`player ${newPlayer.id}: logged in`)
+				const oldPlayer = s.deserializeAttachment()
+				if (oldPlayer.id != newPlayer.id) {
+					server.send(`player ${oldPlayer.id}: logged in`)
+				}
+			})
 			result = new Response(null, { status: 101, webSocket: client })
 		}
 		return result

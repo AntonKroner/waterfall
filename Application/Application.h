@@ -24,7 +24,7 @@
 #include "./gui.h"
 #include <string.h>
 
-#define TARGET_COUNT (4)
+#define TARGET_COUNT (10)
 #define PLAYERS_MAX (10)
 
 typedef struct {
@@ -36,6 +36,7 @@ typedef struct {
     WGPUQueue queue;
     Application_Depth depth;
     RenderTarget* targets[TARGET_COUNT];
+    size_t playerId;
     Player* player;
     struct {
         size_t count;
@@ -191,7 +192,7 @@ static void onKeyPress(GLFWwindow* window, int key, int /*s*/, int /*a*/, int /*
         application->camera.zoom = 1;
         break;
     }
-    if (application->gui->chat->socket) {
+    if (application->gui->chat->socket && key != GLFW_KEY_LEFT_ALT && key != GLFW_KEY_TAB) {
       Socket_enqueue(application->gui->chat->socket, strdup("moved"));
     }
     application->globals.uniform.matrices.view =
@@ -284,7 +285,7 @@ Application* Application_create(const size_t width, const size_t height, bool in
     result->depth = Application_Depth_attach(result->device, width, height);
     result->lightning = Application_Lightning_create(result->device);
     uniform_attach(result, width, height);
-    for (size_t i = 0; TARGET_COUNT - 2 > i; i++) {
+    for (size_t i = 0; 4 - 2 > i; i++) {
       result->targets[i] = (RenderTarget*)Fourareen_Create(
         0,
         result->device,
@@ -293,22 +294,24 @@ Application* Application_create(const size_t width, const size_t height, bool in
         result->globals.bind.groupLayout,
         Vector3f_make(i * 5, 0, 0));
     }
-    result->targets[TARGET_COUNT - 2] = (RenderTarget*)Mammoth_Create(
+    result->targets[4 - 2] = (RenderTarget*)Mammoth_Create(
       0,
       result->device,
       result->queue,
       result->depth.format,
       result->globals.bind.groupLayout,
       Vector3f_make(0, 3, 0));
-    result->player = Player_Create(
-      0,
-      result->device,
-      result->queue,
-      result->depth.format,
-      result->globals.bind.groupLayout,
-      Vector3f_fill(0),
-      result->camera.target);
-    result->targets[TARGET_COUNT - 1] = (RenderTarget*)result->player;
+    // result->players.count = 1;
+    // result->player = Player_Create(
+    //   0,
+    //   result->device,
+    //   result->queue,
+    //   result->depth.format,
+    //   result->globals.bind.groupLayout,
+    //   Vector3f_fill(0),
+    //   result->camera.target);
+    // result->players.players[0] = result->player;
+    // result->targets[TARGET_COUNT - 1] = (RenderTarget*)result->player;
     if (!Application_gui_attach(result->window, result->device, result->depth.format)) {
       printf("gui problem!!\n");
     }
@@ -345,24 +348,52 @@ void Application_render(Application application[static 1]) {
       Application_RenderPassEncoder_make(encoder, nextTexture, application->depth.view);
     wgpuRenderPassEncoderSetBindGroup(renderPass, 0, application->globals.bind.group, 0, 0);
     for (size_t i = 0; TARGET_COUNT > i; i++) {
-      RenderTarget_render(application->targets[i], renderPass);
+      if (application->targets[i]) {
+        RenderTarget_render(application->targets[i], renderPass);
+      }
     }
     Application_gui_render(renderPass, &application->lightning, &application->camera);
 
-    {
-      char* message =
-        application->gui->chat->messages->data[application->gui->chat->messages->length];
-      if (!strncmp(message, "player ", 7)) {
+    if (
+      application->gui->chat->socket && application->gui->chat->messages
+      && application->gui->chat->messages->data
+      && application->gui->chat->messages->length) {
+      char* message = application->gui->chat->messages
+                        ->data[application->gui->chat->messages->length - 1];
+      static size_t lastHandledMessage = 0;
+      if (
+        application->gui->chat->messages->length - 1 >= lastHandledMessage && message
+        && strlen(message) > 7 && !strncmp(message, "player ", 7)) {
+        lastHandledMessage++;
         size_t playerId = atoi(&message[7]);
-        if (playerId >= application->players.count) {
-          application->players.players[application->players.count++] = Player_Create(
-            0,
-            application->device,
-            application->queue,
-            application->depth.format,
-            application->globals.bind.groupLayout,
-            Vector3f_fill(0),
-            Vector3f_make(atoi(&message[10]), 0, 0));
+        printf("%s \n%zu\ncount: %zu\n", message, playerId, application->players.count);
+
+        if (!strncmp(&message[10], "logged in", 9)) {
+          if (!application->player) {
+            application->player = Player_Create(
+              0,
+              application->device,
+              application->queue,
+              application->depth.format,
+              application->globals.bind.groupLayout,
+              Vector3f_fill(0),
+              Vector3f_fill(0));
+            application->playerId = playerId;
+            application->players.players[playerId] = application->player;
+          }
+          else {
+            application->players.players[playerId] = Player_Create(
+              0,
+              application->device,
+              application->queue,
+              application->depth.format,
+              application->globals.bind.groupLayout,
+              Vector3f_fill(0),
+              Vector3f_fill(0));
+          }
+          application->targets[2 + playerId] =
+            (RenderTarget*)application->players.players[playerId];
+          application->players.count++;
         }
         else {
           Player_move(
