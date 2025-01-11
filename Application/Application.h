@@ -363,13 +363,15 @@ void Application_render(Application application[static 1]) {
       static size_t lastHandledMessage = 0;
       if (
         application->gui->chat->messages->length - 1 >= lastHandledMessage && message
-        && strlen(message) > 7 && !strncmp(message, "player ", 7)) {
+        && strlen(message) > 7 && !strncmp(message, "player ", 6)) {
         lastHandledMessage++;
+
         size_t playerId = atoi(&message[7]);
-        printf("%s \n%zu\ncount: %zu\n", message, playerId, application->players.count);
+        printf("%s: %zu\ncount: %zu\n", message, playerId, application->players.count);
 
         if (!strncmp(&message[10], "logged in", 9)) {
           if (!application->player) {
+            printf("gets here id: %zu\n", playerId);
             application->player = Player_Create(
               0,
               application->device,
@@ -391,11 +393,13 @@ void Application_render(Application application[static 1]) {
               Vector3f_fill(0),
               Vector3f_fill(0));
           }
-          application->targets[2 + playerId] =
+          application->targets[3 + playerId] =
             (RenderTarget*)application->players.players[playerId];
           application->players.count++;
         }
-        else {
+        else if (strstr(message, ",0,0")) {
+          printf("player %zu move\n", playerId);
+          printf("player %zu: %p\n", playerId, application->players.players[playerId]);
           Player_move(
             application->players.players[playerId],
             application->queue,
