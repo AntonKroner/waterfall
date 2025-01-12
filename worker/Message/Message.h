@@ -4,13 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef enum: uint32_t {
+typedef enum /*: uint32_t compiler is really dumb atm*/ {
   Message_login = 0,
   Message_chat,
   Message_move,
 } Message_Type;
 typedef struct {
     char name[256];
+    float position[3];
 } Message_Login;
 typedef struct {
     char message[256];

@@ -7,6 +7,7 @@
 #include "rxi/Array.h"
 #include "./Messages.h"
 #include "../../../worker/Message/Message.h"
+#include "../Queues.h"
 
 typedef struct {
     lws_sorted_usec_list_t sul; /* schedule connection retry */
@@ -122,8 +123,13 @@ static int onCallback(
       }
       break;
     case LWS_CALLBACK_CLIENT_RECEIVE:
-      Array_push(socket->messages, strdup(in ? (char*)in : "(null)"));
-      printf("received data: %s\n", in ? (char*)in : "(null)");
+      {
+        // Array_push(socket->messages, strdup(in ? (char*)in : "(null)"));
+        Message message = { .type = Message_chat };
+        memcpy(message.chat.message, in, strlen(in));
+        Queue_push(&Queue_incoming, message);
+        printf("received data: %s\n", in ? (char*)in : "(null)");
+      }
       break;
     case LWS_CALLBACK_CLIENT_ESTABLISHED:
       lwsl_user("%s: established\n", __func__);
@@ -139,15 +145,23 @@ static int onCallback(
       // return retry(m, wsi);
       break;
     case LWS_CALLBACK_CLIENT_WRITEABLE:
-      if (socket->post) {
-        Message message = { .type = Message_chat };
-        strcpy(message.chat.message, socket->post);
-        size_t length = strlen(socket->post);
-        unsigned char buffer[LWS_PRE + sizeof(Message)] = { 0 };
-        memcpy(&buffer[LWS_PRE], &message, sizeof(Message));
-        lws_write(wsi, &buffer[LWS_PRE], sizeof(Message), LWS_WRITE_BINARY);
-        memset(socket->post, 0, length);
-        socket->post = 0;
+      // if (socket->post) {
+      //   Message message = { .type = Message_chat };
+      //   strcpy(message.chat.message, socket->post);
+      //   size_t length = strlen(socket->post);
+      //   unsigned char buffer[LWS_PRE + sizeof(Message)] = { 0 };
+      //   memcpy(&buffer[LWS_PRE], &message, sizeof(Message));
+      //   lws_write(wsi, &buffer[LWS_PRE], sizeof(Message), LWS_WRITE_BINARY);
+      //   memset(socket->post, 0, length);
+      //   socket->post = 0;
+      // }
+      {
+        Message message = { 0 };
+        if (Queue_pop(&Queue_outgoing, &message)) {
+          unsigned char buffer[LWS_PRE + sizeof(Message)] = { 0 };
+          memcpy(&buffer[LWS_PRE], &message, sizeof(Message));
+          lws_write(wsi, &buffer[LWS_PRE], sizeof(Message), LWS_WRITE_BINARY);
+        }
       }
       break;
     case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:

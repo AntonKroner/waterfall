@@ -8,6 +8,7 @@ export namespace Message {
 	export interface Login {
 		type: Type.login
 		name: string
+		position: [number, number, number]
 	}
 	export interface Chat {
 		type: Type.chat
@@ -26,6 +27,14 @@ export namespace Message {
 				result = {
 					type: Message.Type.chat,
 					message: new TextDecoder().decode(message.subarray(4, message.indexOf(0, 4))),
+				}
+				break
+			case Message.Type.login:
+				const name = new Uint8Array(buffer)
+				result = {
+					type: Message.Type.login,
+					name: new TextDecoder().decode(name.subarray(4, name.indexOf(0, 4))),
+					position: [view.getFloat32(260, true), view.getFloat32(264, true), view.getFloat32(268, true)],
 				}
 				break
 		}

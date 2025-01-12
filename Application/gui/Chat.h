@@ -30,7 +30,7 @@ void Chat_initiate() {
     chat.messages = calloc(sizeof(*chat.messages), 1);
     Array_init(chat.messages);
   }
-  chat.socket = Socket_create(chat.messages, chat.username, chat.password);
+  // chat.socket = Socket_create(chat.messages, chat.username, chat.password);
   chat.open = true;
 }
 void Chat_render() {
@@ -69,10 +69,17 @@ static void window() {
     table();
     ImGui_EndChild();
     if (input()) {
-      Socket_enqueue(chat.socket, chat.input);
+      Message message = { .type = Message_chat, .chat = { 0 } };
+      strcpy(message.chat.message, chat.input);
+      Queue_push(&Queue_outgoing, message);
+      memset(chat.input, 0, strlen(chat.input));
+      // Socket_enqueue(chat.socket, chat.input);
     }
     if (!chat.open) {
-      Socket_enqueue(chat.socket, strdup("logout"));
+      Message message = { .type = Message_chat, .chat = { "logout" } };
+      Queue_push(&Queue_outgoing, message);
+      // strcpy(message.chat.message, chat.input);
+      // Socket_enqueue(chat.socket, strdup("logout"));
     }
   }
   ImGui_End();
