@@ -46,11 +46,9 @@ void Chat_render() {
   }
 }
 static void error() {
-  ImGui_Begin(
-    "Login",
-    0,
-    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
-      | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
+  const int flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+                    | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize;
+  ImGui_Begin("Login", 0, flags);
   ImGui_Text("error: %s\n", chat.socket->error);
   if (ImGui_Button("Retry")) {
     Socket_destroy(chat.socket);

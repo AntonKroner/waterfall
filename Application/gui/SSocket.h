@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "libwebsockets.h"
-#include "rxi/Array.h"
-#include "./Messages.h"
 #include "../../../worker/Message/Message.h"
 #include "../Queues.h"
 
@@ -13,8 +11,6 @@ typedef struct {
     lws_sorted_usec_list_t sul; /* schedule connection retry */
     struct lws* wsi; /* related wsi if any */
     uint16_t retry_count; /* count of consequetive retries */
-    Chat_Messages* messages;
-    Chat_Message post;
     char authentication[256];
     char error[256];
     struct lws_context* context;
@@ -115,6 +111,7 @@ static int onCallback(
   void* in,
   size_t size) {
   Socket* socket = (Socket*)user;
+  Message message = { 0 };
   switch (reason) {
     case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
       lwsl_err("CLIENT_CONNECTION_ERROR: %s\n", in ? (char*)in : "(null)");
@@ -123,13 +120,9 @@ static int onCallback(
       }
       break;
     case LWS_CALLBACK_CLIENT_RECEIVE:
-      {
-        // Array_push(socket->messages, strdup(in ? (char*)in : "(null)"));
-        Message message = { .type = Message_chat };
-        memcpy(message.chat.message, in, strlen(in));
-        Queue_push(&Queue_incoming, message);
-        printf("received data: %s\n", in ? (char*)in : "(null)");
-      }
+      memcpy(&message, in, size);
+      Queue_push(&Queue_incoming, message);
+      Message_print(message);
       break;
     case LWS_CALLBACK_CLIENT_ESTABLISHED:
       lwsl_user("%s: established\n", __func__);
@@ -145,23 +138,10 @@ static int onCallback(
       // return retry(m, wsi);
       break;
     case LWS_CALLBACK_CLIENT_WRITEABLE:
-      // if (socket->post) {
-      //   Message message = { .type = Message_chat };
-      //   strcpy(message.chat.message, socket->post);
-      //   size_t length = strlen(socket->post);
-      //   unsigned char buffer[LWS_PRE + sizeof(Message)] = { 0 };
-      //   memcpy(&buffer[LWS_PRE], &message, sizeof(Message));
-      //   lws_write(wsi, &buffer[LWS_PRE], sizeof(Message), LWS_WRITE_BINARY);
-      //   memset(socket->post, 0, length);
-      //   socket->post = 0;
-      // }
-      {
-        Message message = { 0 };
-        if (Queue_pop(&Queue_outgoing, &message)) {
-          unsigned char buffer[LWS_PRE + sizeof(Message)] = { 0 };
-          memcpy(&buffer[LWS_PRE], &message, sizeof(Message));
-          lws_write(wsi, &buffer[LWS_PRE], sizeof(Message), LWS_WRITE_BINARY);
-        }
+      if (Queue_pop(&Queue_outgoing, &message)) {
+        unsigned char buffer[LWS_PRE + sizeof(Message)] = { 0 };
+        memcpy(&buffer[LWS_PRE], &message, sizeof(Message));
+        lws_write(wsi, &buffer[LWS_PRE], sizeof(Message), LWS_WRITE_BINARY);
       }
       break;
     case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
@@ -171,7 +151,7 @@ static int onCallback(
         socket->authentication,
         strlen(socket->authentication),
         in,
-        (*(char**)in) + size);
+        (*(unsigned char**)in) + size);
       break;
     case LWS_CALLBACK_CHANGE_MODE_POLL_FD:
     case LWS_CALLBACK_LOCK_POLL:
@@ -195,7 +175,7 @@ static int onCallback(
   }
   return lws_callback_http_dummy(wsi, reason, user, in, size);
 }
-Socket* Socket_create(Chat_Messages messages[static 1], char* username, char* password) {
+Socket* Socket_create(char* username, char* password) {
   struct lws_context_creation_info info = {
     .options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT,
     .port = CONTEXT_PORT_NO_LISTEN,
@@ -221,7 +201,6 @@ Socket* Socket_create(Chat_Messages messages[static 1], char* username, char* pa
     socket = 0;
   }
   else {
-    socket->messages = messages;
     lws_sul_schedule(socket->context, 0, &socket->sul, onConnect, 1);
   }
   return socket;
@@ -232,9 +211,6 @@ void Socket_destroy(Socket* socket) {
 }
 void Socket_update(Socket socket[static 1]) {
   lws_service(socket->context, 0);
-}
-void Socket_enqueue(Socket socket[static 1], char* post) {
-  socket->post = post;
 }
 
 #endif // Socket_H_

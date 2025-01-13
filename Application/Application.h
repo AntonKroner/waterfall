@@ -195,7 +195,7 @@ static void onKeyPress(GLFWwindow* window, int key, int /*s*/, int /*a*/, int /*
         break;
     }
     if (application->gui->chat->socket && key != GLFW_KEY_LEFT_ALT && key != GLFW_KEY_TAB) {
-      Socket_enqueue(application->gui->chat->socket, strdup("moved"));
+      // Socket_enqueue(application->gui->chat->socket, strdup("moved"));
     }
     application->globals.uniform.matrices.view =
       Matrix4f_transpose(Application_Camera_viewGet(application->camera));
@@ -356,19 +356,15 @@ void Application_render(Application application[static 1]) {
     }
     Application_gui_render(renderPass, &application->lightning, &application->camera);
     if (!application->socket && application->gui->chat->open) {
-      application->socket = Socket_create(
-        application->gui->chat->messages,
-        application->gui->chat->username,
-        application->gui->chat->password);
+      application->socket =
+        Socket_create(application->gui->chat->username, application->gui->chat->password);
       application->gui->chat->socket = application->socket;
     }
     Message message = { 0 };
     if (Queue_pop(&Queue_incoming, &message)) {
       switch (message.type) {
         case Message_chat:
-          Array_push(
-            application->gui->chat->socket->messages,
-            strdup(message.chat.message));
+          Array_push(application->gui->chat->messages, strdup(message.chat.message));
           printf("render message chat\n");
           break;
         default:

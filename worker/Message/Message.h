@@ -11,6 +11,7 @@ typedef enum /*: uint32_t compiler is really dumb atm*/ {
 } Message_Type;
 typedef struct {
     char name[256];
+    uint32_t id;
     float position[3];
 } Message_Login;
 typedef struct {
@@ -31,6 +32,41 @@ typedef struct {
 void test(Message message) {
   if (message.type == Message_chat) {
     message.chat.message;
+  }
+}
+char* Message_Type_print(Message_Type type) {
+  switch (type) {
+    case Message_login:
+      return "login";
+    case Message_chat:
+      return "chat";
+    case Message_move:
+      return "move";
+  }
+}
+void Message_print(const Message message) {
+  printf("message: \n\ttype: %s\n", Message_Type_print(message.type));
+  switch (message.type) {
+    case Message_login:
+      printf("\tname: %s\n", message.login.name);
+      printf("\tid: %i\n", message.login.id);
+      printf(
+        "\tposition: [%f, %f, %f]\n",
+        message.login.position[0],
+        message.login.position[1],
+        message.login.position[2]);
+      break;
+    case Message_chat:
+      printf("\tmessage: %s\n", message.chat.message);
+      break;
+    case Message_move:
+      printf("\tdirection: %f\n", message.move.direction);
+      // printf(
+      //   "\tposition: [%f, %f, %f]\n",
+      //   message.move.direction[0],
+      //   message.move.direction[1],
+      //   message.move.direction[2]);
+      break;
   }
 }
 
