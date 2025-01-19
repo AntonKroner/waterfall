@@ -27,6 +27,7 @@
 
 #define TARGET_COUNT (10)
 #define PLAYERS_MAX (10)
+#define PLAYER_UNSET (99)
 
 typedef struct {
     GLFWwindow* window;
@@ -38,7 +39,6 @@ typedef struct {
     Application_Depth depth;
     RenderTarget* targets[TARGET_COUNT];
     size_t playerId;
-    Player* player;
     struct {
         size_t count;
         Player* players[PLAYERS_MAX];
@@ -156,32 +156,26 @@ static void onKeyPress(GLFWwindow* window, int key, int /*s*/, int /*a*/, int /*
       case GLFW_KEY_W:
         direction.components[0] = 1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_S:
         direction.components[0] = -1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_A:
         direction.components[1] = -1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_D:
         direction.components[1] = 1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_UP:
         direction.components[2] = 1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_DOWN:
         direction.components[2] = -1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_LEFT:
         Application_Camera_rotate(&application->camera, -1);
@@ -195,7 +189,9 @@ static void onKeyPress(GLFWwindow* window, int key, int /*s*/, int /*a*/, int /*
         break;
     }
     if (application->gui->chat->socket && key != GLFW_KEY_LEFT_ALT && key != GLFW_KEY_TAB) {
-      // Socket_enqueue(application->gui->chat->socket, strdup("moved"));
+      Message message = { .type = Message_move, .move = { .id = application->playerId } };
+      memcpy(message.move.direction, &direction, sizeof(Vector3f));
+      Queue_push(&Queue_outgoing, message);
     }
     application->globals.uniform.matrices.view =
       Matrix4f_transpose(Application_Camera_viewGet(application->camera));
@@ -303,17 +299,7 @@ Application* Application_create(const size_t width, const size_t height, bool in
       result->depth.format,
       result->globals.bind.groupLayout,
       Vector3f_make(0, 3, 0));
-    // result->players.count = 1;
-    // result->player = Player_Create(
-    //   0,
-    //   result->device,
-    //   result->queue,
-    //   result->depth.format,
-    //   result->globals.bind.groupLayout,
-    //   Vector3f_fill(0),
-    //   result->camera.target);
-    // result->players.players[0] = result->player;
-    // result->targets[TARGET_COUNT - 1] = (RenderTarget*)result->player;
+    result->playerId = PLAYER_UNSET;
     if (!Application_gui_attach(result->window, result->device, result->depth.format)) {
       printf("gui problem!!\n");
     }
@@ -367,65 +353,38 @@ void Application_render(Application application[static 1]) {
           Array_push(application->gui->chat->messages, strdup(message.chat.message));
           printf("render message chat\n");
           break;
+        case Message_login:
+          printf("message login\n");
+          if (application->playerId == PLAYER_UNSET) {
+            application->playerId = message.login.id;
+          }
+          application->players.players[message.login.id] = Player_Create(
+            0,
+            application->device,
+            application->queue,
+            application->depth.format,
+            application->globals.bind.groupLayout,
+            Vector3f_fill(0),
+            Vector3f_from(message.login.position));
+          application->targets[3 + message.login.id] =
+            (RenderTarget*)application->players.players[message.login.id];
+          application->players.count++;
+          char loginMessage[] = "Player 1 has logged in";
+          loginMessage[7] = message.login.id + '0';
+          Array_push(application->gui->chat->messages, strdup(loginMessage));
+          break;
+        case Message_move:
+          printf("message move\n");
+          Player_move(
+            application->players.players[message.login.id],
+            application->queue,
+            Vector3f_from(message.move.direction));
+          break;
         default:
           printf("unhandled message type: %i\n", message.type);
           break;
       }
     }
-    // if (
-    //   application->gui->chat->socket && application->gui->chat->messages
-    //   && application->gui->chat->messages->data
-    //   && application->gui->chat->messages->length) {
-    //   char* message = application->gui->chat->messages
-    //                     ->data[application->gui->chat->messages->length - 1];
-    //   static size_t lastHandledMessage = 0;
-    //   if (
-    //     application->gui->chat->messages->length - 1 >= lastHandledMessage && message
-    //     && strlen(message) > 7 && !strncmp(message, "player ", 6)) {
-    //     lastHandledMessage++;
-
-    //     size_t playerId = atoi(&message[7]);
-    //     printf("%s: %zu\ncount: %zu\n", message, playerId, application->players.count);
-
-    //     if (!strncmp(&message[10], "logged in", 9)) {
-    //       if (!application->player) {
-    //         printf("gets here id: %zu\n", playerId);
-    //         application->player = Player_Create(
-    //           0,
-    //           application->device,
-    //           application->queue,
-    //           application->depth.format,
-    //           application->globals.bind.groupLayout,
-    //           Vector3f_fill(0),
-    //           Vector3f_fill(0));
-    //         application->playerId = playerId;
-    //         application->players.players[playerId] = application->player;
-    //       }
-    //       else {
-    //         application->players.players[playerId] = Player_Create(
-    //           0,
-    //           application->device,
-    //           application->queue,
-    //           application->depth.format,
-    //           application->globals.bind.groupLayout,
-    //           Vector3f_fill(0),
-    //           Vector3f_fill(0));
-    //       }
-    //       application->targets[3 + playerId] =
-    //         (RenderTarget*)application->players.players[playerId];
-    //       application->players.count++;
-    //     }
-    //     else if (strstr(message, ",0,0")) {
-    //       printf("player %zu move\n", playerId);
-    //       printf("player %zu: %p\n", playerId, application->players.players[playerId]);
-    //       Player_move(
-    //         application->players.players[playerId],
-    //         application->queue,
-    //         Vector3f_make(0.1, 0, 0));
-    //     }
-    //   }
-    // }
-
     wgpuRenderPassEncoderEnd(renderPass);
     wgpuTextureViewRelease(nextTexture);
     WGPUCommandBufferDescriptor cmdBufferDescriptor = {

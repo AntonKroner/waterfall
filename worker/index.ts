@@ -63,32 +63,25 @@ export class Realm implements DurableObject {
 			console.log("message is arraybuffer: ", payload)
 			const message = Message.parse(payload)
 			console.log("decoded: ", message)
+			let post: string
 			switch (message?.type) {
 				case Message.Type.chat:
-					const post = `${player.name}: ${message.message}`
+					post = `${player.name}: ${message.message}`
 					this.messages = post
 					sockets.forEach(s => s.send(Message.serialize({ type: Message.Type.chat, message: post })))
+					break
+				case Message.Type.move:
+					player.position = [
+						message.direction[0] + 0.1 * message.direction[0],
+						message.direction[1] + 0.1 * message.direction[1],
+						message.direction[2] + 0.1 * message.direction[2],
+					]
+					socket.serializeAttachment(player)
+					sockets.forEach(s => s.send(payload))
 					break
 			}
 		} else {
 			console.log("message is string: ", payload)
-			if (payload == "logout") {
-				socket.close(1000, "user requested logout")
-				sockets.forEach(
-					s =>
-						s != socket && s.send(Message.serialize({ type: Message.Type.chat, message: `${player.name}: logged out` }))
-				)
-			} else if (payload == "moved") {
-				player.position[0] += 0.1
-				sockets.forEach(s =>
-					s.send(Message.serialize({ type: Message.Type.chat, message: `player ${player.id}: ${player.position}` }))
-				)
-				socket.serializeAttachment(player)
-			} else {
-				const post = `${player.name}: ${payload}`
-				this.messages = post
-				sockets.forEach(s => s.send(Message.serialize({ type: Message.Type.chat, message: post })))
-			}
 		}
 	}
 	async webSocketClose(socket: WebSocket, code: number, reason: string, clean: boolean): Promise<void> {
@@ -111,17 +104,15 @@ export class Realm implements DurableObject {
 			this.state.acceptWebSocket(server)
 			;(await this.messages).map(m => server.send(Message.serialize({ type: Message.Type.chat, message: m })))
 			const sockets = this.state.getWebSockets()
-
 			const newPlayer: Player = { id: sockets.length - 1, name: user, position: [0, 0, 0] }
 			server.serializeAttachment(newPlayer)
 			console.log(sockets.map(s => s.deserializeAttachment()))
 			sockets.map(s => {
 				const oldPlayer: Player = s.deserializeAttachment()
 				if (oldPlayer.id != newPlayer.id) {
-					const message = `player ${oldPlayer.id}: logged in`
-					server.send(Message.serialize({ type: Message.Type.chat, message }))
+					server.send(Message.Login.serialize(oldPlayer))
 				}
-				s.send(Message.serialize({ type: Message.Type.chat, message: `player ${newPlayer.id}: logged in` }))
+				s.send(Message.Login.serialize(newPlayer))
 			})
 			result = new Response(null, { status: 101, webSocket: client })
 		}

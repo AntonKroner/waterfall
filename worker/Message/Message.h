@@ -10,15 +10,16 @@ typedef enum /*: uint32_t compiler is really dumb atm*/ {
   Message_move,
 } Message_Type;
 typedef struct {
-    char name[256];
     uint32_t id;
+    char name[256];
     float position[3];
 } Message_Login;
 typedef struct {
     char message[256];
 } Message_Chat;
 typedef struct {
-    float direction;
+    uint32_t id;
+    float direction[3];
 } Message_Move;
 typedef struct {
     Message_Type type;
@@ -48,8 +49,8 @@ void Message_print(const Message message) {
   printf("message: \n\ttype: %s\n", Message_Type_print(message.type));
   switch (message.type) {
     case Message_login:
-      printf("\tname: %s\n", message.login.name);
       printf("\tid: %i\n", message.login.id);
+      printf("\tname: %s\n", message.login.name);
       printf(
         "\tposition: [%f, %f, %f]\n",
         message.login.position[0],
@@ -60,12 +61,15 @@ void Message_print(const Message message) {
       printf("\tmessage: %s\n", message.chat.message);
       break;
     case Message_move:
-      printf("\tdirection: %f\n", message.move.direction);
-      // printf(
-      //   "\tposition: [%f, %f, %f]\n",
-      //   message.move.direction[0],
-      //   message.move.direction[1],
-      //   message.move.direction[2]);
+      printf("\tid: %i\n", message.move.id);
+      printf(
+        "\tposition: [%f, %f, %f]\n",
+        message.move.direction[0],
+        message.move.direction[1],
+        message.move.direction[2]);
+      break;
+    default:
+      printf("unknown message type: %d\n", message.type);
       break;
   }
 }
