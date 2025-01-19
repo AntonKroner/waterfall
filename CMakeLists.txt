@@ -7,6 +7,8 @@ project(
 )
 set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake)
 
+#-fsanitize=address -fno-omit-frame-pointer
+
 add_executable(waterfall.exe
 	main.c
 	Application/adapter.c
