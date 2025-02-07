@@ -1,7 +1,7 @@
 {
-	"name": "@utily/worker-template",
+	"name": "worker-waterfall",
 	"version": "0.0.3",
-	"description": "TypeScript template for stencil and Cloudflare workers.",
+	"description": "Online backend for waterfall game engine.",
 	"private": true,
 	"repository": "https://github.com/worker-stencil-template/app/",
 	"type": "module",
@@ -11,34 +11,6 @@
 	"homepage": "https://github.com/worker-stencil-template/app/",
 	"main": "./dist/index.mjs",
 	"module": "./dist/index.mjs",
-	"jest": {
-		"transform": {
-			"^.+\\.(j|t)sx?$": [
-				"ts-jest",
-				{
-					"tsconfig": "./tsconfig.test.json",
-					"useESM": true
-				}
-			]
-		},
-		"extensionsToTreatAsEsm": [
-			".ts"
-		],
-		"transformIgnorePatterns": [
-			"<rootDir>/node_modules/(?!(cryptly|authly|isoly|gracely|cloudly-http|cloudly-router|cloudly-formdata)/.*)"
-		],
-		"testEnvironment": "node",
-		"testRegex": "((\\.|/)(test|spec))(\\.|\\/.+)(jsx?|tsx?)$",
-		"testPathIgnorePatterns": [
-			"node_modules/",
-			"dist/"
-		],
-		"collectCoverageFrom": [
-			"**/*.{ts,tsx,js,jsx}",
-			"!**/node_modules/**",
-			"!**/dist/**"
-		]
-	},
 	"scripts": {
 		"lint": "eslint '**/*.{ts,tsx}'",
 		"fix": "eslint '**/*.{ts,tsx}' --fix",

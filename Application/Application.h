@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 #include "webgpu.h"
 #include "GLFW/glfw3.h"
 #include "glfw3webgpu/glfw3webgpu.h"
@@ -21,8 +22,12 @@
 #include "./RenderTarget/BBindGroupLayout.h"
 #include "./Camera.h"
 #include "./gui.h"
+#include "./Queues.h"
+#include "./gui/SSocket.h"
 
-#define TARGET_COUNT (4)
+#define TARGET_COUNT (10)
+#define PLAYERS_MAX (10)
+#define PLAYER_UNSET (99)
 
 typedef struct {
     GLFWwindow* window;
@@ -33,7 +38,11 @@ typedef struct {
     WGPUQueue queue;
     Application_Depth depth;
     RenderTarget* targets[TARGET_COUNT];
-    Player* player;
+    size_t playerId;
+    struct {
+        size_t count;
+        Player* players[PLAYERS_MAX];
+    } players;
     struct {
         Uniform_Global uniform;
         struct {
@@ -44,6 +53,8 @@ typedef struct {
     WGPUBuffer uniformBuffer;
     Camera camera;
     Application_Lighting lightning;
+    Gui* gui;
+    Socket* socket;
 } Application;
 
 Application* Application_create(const size_t width, const size_t height, bool inspect);
@@ -137,7 +148,7 @@ static void onMouseScroll(GLFWwindow* window, double x, double y) {
 static void onKeyPress(GLFWwindow* window, int key, int /*s*/, int /*a*/, int /*m*/) {
   Application* application = (Application*)glfwGetWindowUserPointer(window);
   Vector3f direction = Vector3f_make(0, 0, 0);
-  if (application) {
+  if (application && !application->gui->io->WantCaptureKeyboard) {
     switch (key) {
       case GLFW_KEY_ESCAPE:
         glfwSetWindowShouldClose(window, GLFW_TRUE);
@@ -145,32 +156,26 @@ static void onKeyPress(GLFWwindow* window, int key, int /*s*/, int /*a*/, int /*
       case GLFW_KEY_W:
         direction.components[0] = 1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_S:
         direction.components[0] = -1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_A:
         direction.components[1] = -1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_D:
         direction.components[1] = 1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_UP:
         direction.components[2] = 1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_DOWN:
         direction.components[2] = -1;
         Application_Camera_moveTarget(&application->camera, direction);
-        Player_move(application->player, application->queue, direction);
         break;
       case GLFW_KEY_LEFT:
         Application_Camera_rotate(&application->camera, -1);
@@ -182,6 +187,11 @@ static void onKeyPress(GLFWwindow* window, int key, int /*s*/, int /*a*/, int /*
         Application_Camera_initiate(&application->camera, M_PI * 45 / 180, M_PI * 45 / 180);
         application->camera.zoom = 1;
         break;
+    }
+    if (application->gui->chat->socket && key != GLFW_KEY_LEFT_ALT && key != GLFW_KEY_TAB) {
+      Message message = { .type = Message_move, .move = { .id = application->playerId } };
+      memcpy(message.move.direction, &direction, sizeof(Vector3f));
+      Queue_push(&Queue_outgoing, message);
     }
     application->globals.uniform.matrices.view =
       Matrix4f_transpose(Application_Camera_viewGet(application->camera));
@@ -273,7 +283,7 @@ Application* Application_create(const size_t width, const size_t height, bool in
     result->depth = Application_Depth_attach(result->device, width, height);
     result->lightning = Application_Lightning_create(result->device);
     uniform_attach(result, width, height);
-    for (size_t i = 0; TARGET_COUNT - 2 > i; i++) {
+    for (size_t i = 0; 4 - 2 > i; i++) {
       result->targets[i] = (RenderTarget*)Fourareen_Create(
         0,
         result->device,
@@ -282,26 +292,18 @@ Application* Application_create(const size_t width, const size_t height, bool in
         result->globals.bind.groupLayout,
         Vector3f_make(i * 5, 0, 0));
     }
-    result->targets[TARGET_COUNT - 2] = (RenderTarget*)Mammoth_Create(
+    result->targets[4 - 2] = (RenderTarget*)Mammoth_Create(
       0,
       result->device,
       result->queue,
       result->depth.format,
       result->globals.bind.groupLayout,
-
       Vector3f_make(0, 3, 0));
-    result->player = Player_Create(
-      0,
-      result->device,
-      result->queue,
-      result->depth.format,
-      result->globals.bind.groupLayout,
-      Vector3f_make(0, 0, 0),
-      result->camera.target);
-    result->targets[TARGET_COUNT - 1] = (RenderTarget*)result->player;
+    result->playerId = PLAYER_UNSET;
     if (!Application_gui_attach(result->window, result->device, result->depth.format)) {
       printf("gui problem!!\n");
     }
+    result->gui = &gui;
     Application_Lightning_update(&result->lightning, result->queue);
   }
   return result;
@@ -324,19 +326,65 @@ void Application_render(Application application[static 1]) {
       0,
       &application->globals.uniform,
       sizeof(Uniform_Global));
-    WGPUCommandEncoderDescriptor commandEncoderDesc = {
+    WGPUCommandEncoderDescriptor commandEncoderDescriptor = {
       .nextInChain = 0,
       .label = "Command Encoder",
     };
     WGPUCommandEncoder encoder =
-      wgpuDeviceCreateCommandEncoder(application->device, &commandEncoderDesc);
+      wgpuDeviceCreateCommandEncoder(application->device, &commandEncoderDescriptor);
     WGPURenderPassEncoder renderPass =
       Application_RenderPassEncoder_make(encoder, nextTexture, application->depth.view);
     wgpuRenderPassEncoderSetBindGroup(renderPass, 0, application->globals.bind.group, 0, 0);
     for (size_t i = 0; TARGET_COUNT > i; i++) {
-      RenderTarget_render(application->targets[i], renderPass);
+      if (application->targets[i]) {
+        RenderTarget_render(application->targets[i], renderPass);
+      }
     }
     Application_gui_render(renderPass, &application->lightning, &application->camera);
+    if (!application->socket && application->gui->chat->open) {
+      application->socket =
+        Socket_create(application->gui->chat->username, application->gui->chat->password);
+      application->gui->chat->socket = application->socket;
+    }
+    Message message = { 0 };
+    if (Queue_pop(&Queue_incoming, &message)) {
+      switch (message.type) {
+        case Message_chat:
+          Array_push(application->gui->chat->messages, strdup(message.chat.message));
+          printf("render message chat\n");
+          break;
+        case Message_login:
+          printf("message login\n");
+          if (application->playerId == PLAYER_UNSET) {
+            application->playerId = message.login.id;
+          }
+          application->players.players[message.login.id] = Player_Create(
+            0,
+            application->device,
+            application->queue,
+            application->depth.format,
+            application->globals.bind.groupLayout,
+            Vector3f_fill(0),
+            Vector3f_from(message.login.position));
+          application->targets[3 + message.login.id] =
+            (RenderTarget*)application->players.players[message.login.id];
+          application->players.count++;
+          char loginMessage[] = "Player 1 has logged in";
+          loginMessage[7] = message.login.id + '0';
+          Array_push(application->gui->chat->messages, strdup(loginMessage));
+          break;
+        case Message_move:
+          printf("message move\n");
+          Player_move(
+            application->players.players[message.login.id],
+            application->queue,
+            Vector3f_from(message.move.direction));
+          break;
+        default:
+          printf("unhandled message type: %i\n", message.type);
+          break;
+      }
+    }
     wgpuRenderPassEncoderEnd(renderPass);
     wgpuTextureViewRelease(nextTexture);
     WGPUCommandBufferDescriptor cmdBufferDescriptor = {

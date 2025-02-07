@@ -2,6 +2,7 @@ import { gracely } from "gracely"
 import { http } from "cloudly-http"
 import { storage } from "cloudly-storage"
 import { Environment } from "./Environment"
+import { Message } from "./Message"
 
 export default {
 	async fetch(request: Request, environment: Environment): Promise<Response> {
@@ -32,6 +33,13 @@ export default {
 		return result
 	},
 }
+
+interface Player {
+	id: number
+	name: string
+	position: [number, number, number]
+}
+
 export class Realm implements DurableObject {
 	#messages?: string[]
 	get messages(): Promise<string[]> {
@@ -48,17 +56,32 @@ export class Realm implements DurableObject {
 	}
 	constructor(private readonly state: DurableObjectState, readonly environment: Environment) {}
 
-	async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
+	async webSocketMessage(socket: WebSocket, payload: string | ArrayBuffer): Promise<void> {
 		const sockets = this.state.getWebSockets()
-		const id = socket.deserializeAttachment()
-		console.log("message: ", message)
-		if (message == "logout") {
-			socket.close(1000, "user requested logout")
-			sockets.forEach(s => s != socket && s.send(`${id}: logged out`))
+		const player: Player = socket.deserializeAttachment()
+		if (typeof payload != "string") {
+			console.log("message is arraybuffer: ", payload)
+			const message = Message.parse(payload)
+			console.log("decoded: ", message)
+			let post: string
+			switch (message?.type) {
+				case Message.Type.chat:
+					post = `${player.name}: ${message.message}`
+					this.messages = post
+					sockets.forEach(s => s.send(Message.serialize({ type: Message.Type.chat, message: post })))
+					break
+				case Message.Type.move:
+					player.position = [
+						message.direction[0] + 0.1 * message.direction[0],
+						message.direction[1] + 0.1 * message.direction[1],
+						message.direction[2] + 0.1 * message.direction[2],
+					]
+					socket.serializeAttachment(player)
+					sockets.forEach(s => s.send(payload))
+					break
+			}
 		} else {
-			const post = `${id}: ${message}`
-			this.messages = post
-			sockets.forEach(s => s.send(post))
+			console.log("message is string: ", payload)
 		}
 	}
 	async webSocketClose(socket: WebSocket, code: number, reason: string, clean: boolean): Promise<void> {
@@ -79,9 +102,18 @@ export class Realm implements DurableObject {
 		else {
 			const [client, server] = Object.values(new WebSocketPair())
 			this.state.acceptWebSocket(server)
-			server.serializeAttachment(user)
-			;(await this.messages).map(m => server.send(m))
-			this.state.getWebSockets().map(s => s.send(`${user}: logged in`))
+			;(await this.messages).map(m => server.send(Message.serialize({ type: Message.Type.chat, message: m })))
+			const sockets = this.state.getWebSockets()
+			const newPlayer: Player = { id: sockets.length - 1, name: user, position: [0, 0, 0] }
+			server.serializeAttachment(newPlayer)
+			console.log(sockets.map(s => s.deserializeAttachment()))
+			sockets.map(s => {
+				const oldPlayer: Player = s.deserializeAttachment()
+				if (oldPlayer.id != newPlayer.id) {
+					server.send(Message.Login.serialize(oldPlayer))
+				}
+				s.send(Message.Login.serialize(newPlayer))
+			})
 			result = new Response(null, { status: 101, webSocket: client })
 		}
 		return result

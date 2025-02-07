@@ -30,7 +30,6 @@ void Chat_initiate() {
     chat.messages = calloc(sizeof(*chat.messages), 1);
     Array_init(chat.messages);
   }
-  chat.socket = Socket_create(chat.messages, chat.username, chat.password);
   chat.open = true;
 }
 void Chat_render() {
@@ -46,11 +45,9 @@ void Chat_render() {
   }
 }
 static void error() {
-  ImGui_Begin(
-    "Login",
-    0,
-    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
-      | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
+  const int flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+                    | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize;
+  ImGui_Begin("Login", 0, flags);
   ImGui_Text("error: %s\n", chat.socket->error);
   if (ImGui_Button("Retry")) {
     Socket_destroy(chat.socket);
@@ -59,9 +56,8 @@ static void error() {
   ImGui_End();
 }
 static void window() {
-  ImGuiWindowFlags flags =
-    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
-    | ImGuiWindowFlags_NoCollapse;
+  const int flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+                    | ImGuiWindowFlags_NoCollapse;
   if (ImGui_Begin("Chat", &chat.open, flags)) {
     ImVec2 size = { 0, -25 };
     ImGuiWindowFlags flags = ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX;
@@ -69,10 +65,14 @@ static void window() {
     table();
     ImGui_EndChild();
     if (input()) {
-      Socket_enqueue(chat.socket, chat.input);
+      Message message = { .type = Message_chat, .chat = { 0 } };
+      strcpy(message.chat.message, chat.input);
+      Queue_push(&Queue_outgoing, message);
+      memset(chat.input, 0, strlen(chat.input));
     }
     if (!chat.open) {
-      Socket_enqueue(chat.socket, strdup("logout"));
+      Message message = { .type = Message_chat, .chat = { "logout" } };
+      Queue_push(&Queue_outgoing, message);
     }
   }
   ImGui_End();
@@ -103,11 +103,9 @@ static void table() {
 static void Chat_login() {
   ImVec2 size = { 200, 100 };
   ImGui_SetNextWindowSize(size, 0);
-  ImGui_Begin(
-    "Login",
-    0,
-    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
-      | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
+  const int flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+                    | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize;
+  ImGui_Begin("Login", 0, flags);
   bool username = ImGui_InputTextWithHint(
     "##username input",
     "username",

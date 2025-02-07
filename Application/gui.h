@@ -10,14 +10,20 @@
 #include "./gui/color.h"
 #include "./gui/debug.h"
 
-static ImGuiIO* io = 0;
+typedef struct {
+    ImGuiContext* context;
+    ImGuiIO* io;
+    Chat* chat;
+} Gui;
+static Gui gui = { 0 };
 
 bool Application_gui_attach(
   GLFWwindow* window,
   WGPUDevice device,
   WGPUTextureFormat depthFormat) {
-  ImGui_CreateContext(0);
-  io = ImGui_GetIO();
+  gui.context = ImGui_CreateContext(0);
+  gui.io = ImGui_GetIO();
+  gui.chat = &chat;
   cImGui_ImplGlfw_InitForOther(window, true);
   struct ImGui_ImplWGPU_InitInfo initInfo = {
     .Device = device,
@@ -49,7 +55,7 @@ void Application_gui_render(
   cImGui_ImplWGPU_RenderDrawData(ImGui_GetDrawData(), renderPass);
 }
 bool Application_gui_isCapturing() {
-  return io->WantCaptureMouse;
+  return gui.io->WantCaptureMouse;
 }
 
 #endif // Application_gui_H_
