@@ -4,7 +4,6 @@
 #include "webgpu.h"
 #include "linear/algebra.h"
 #include "../device.h"
-#include "./Bindgroups.h"
 #include "./Model.h"
 #include "./TTexture.h"
 #include "./BBindGroup.h"
@@ -23,7 +22,6 @@ typedef struct {
         size_t size;
     } uniform;
     WGPUBindGroup bindGroup;
-    Bindgroups groups;
     WGPURenderPipeline pipeline;
 } RenderTarget;
 

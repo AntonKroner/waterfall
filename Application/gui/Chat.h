@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "cimgui/cimgui.h"
-#include "./SSocket.h"
+#include "../SSocket.h"
 #include "./Messages.h"
 
 typedef struct {
@@ -40,7 +40,6 @@ void Chat_render() {
     error();
   }
   else {
-    Socket_update(chat.socket);
     window();
   }
 }

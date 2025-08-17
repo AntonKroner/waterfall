@@ -1,6 +1,5 @@
 #ifndef device_H_
 #define device_H_
-
 #include "webgpu.h"
 
 WGPUDevice Application_device_request(WGPUAdapter adapter);

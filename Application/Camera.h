@@ -50,7 +50,7 @@ void Application_Camera_initiate(
 void Application_Camera_rotate(Camera camera[static 1], const float phi) {
   camera->angles.components[0] = clamp(camera->angles.components[0]);
   camera->angles.components[1] = clamp(camera->angles.components[1] + sensitivity * phi);
-  const double norm = Vector_norm(Vector_subtract(camera->position, camera->target));
+  const float norm = Vector_norm(Vector_subtract(camera->position, camera->target));
   const float cosTheta = cos(camera->angles.components[0]);
   const float sinTheta = sin(camera->angles.components[0]);
   const float cosPhi = cos(camera->angles.components[1]);

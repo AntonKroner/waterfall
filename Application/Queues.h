@@ -1,6 +1,5 @@
 #ifndef Queues_H_
 #define Queues_H_
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>

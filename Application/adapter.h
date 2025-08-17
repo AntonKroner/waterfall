@@ -1,6 +1,5 @@
 #ifndef adapter_H_
 #define adapter_H_
-
 #include "webgpu.h"
 
 WGPUAdapter Application_adapter_request(

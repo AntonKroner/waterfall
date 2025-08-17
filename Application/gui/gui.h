@@ -5,10 +5,10 @@
 #include "cimgui/cimgui.h"
 #include "cimgui/cimgui_impl_wgpu.h"
 #include "cimgui/cimgui_impl_glfw.h"
-#include "./Lightning.h"
-#include "./gui/Chat.h"
-#include "./gui/color.h"
-#include "./gui/debug.h"
+#include "../Lightning.h"
+#include "./Chat.h"
+#include "./color.h"
+#include "./debug.h"
 
 typedef struct {
     ImGuiContext* context;

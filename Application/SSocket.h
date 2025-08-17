@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "libwebsockets.h"
-#include "../../../worker/Message/Message.h"
-#include "../Queues.h"
+#include "../worker/Message/Message.h"
+#include "./Queues.h"
 
 typedef struct {
     lws_sorted_usec_list_t sul; /* schedule connection retry */

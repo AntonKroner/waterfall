@@ -5,6 +5,8 @@
 #include "webgpu.h"
 #include "linear/algebra.h"
 
+// TODO: should be moved to be Globals_Lightning
+
 typedef struct {
     Vector4f directions[2];
     Vector4f colors[2];

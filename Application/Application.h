@@ -21,9 +21,9 @@
 #include "./RenderTarget/BBindGroup.h"
 #include "./RenderTarget/BBindGroupLayout.h"
 #include "./Camera.h"
-#include "./gui.h"
+#include "./gui/gui.h"
 #include "./Queues.h"
-#include "./gui/SSocket.h"
+#include "./SSocket.h"
 
 #define TARGET_COUNT (10)
 #define PLAYERS_MAX (10)
@@ -313,6 +313,53 @@ bool Application_shouldClose(Application application[static 1]) {
 }
 void Application_render(Application application[static 1]) {
   glfwPollEvents();
+  if (application->socket) {
+    Socket_update(application->socket);
+  }
+  else if (application->gui->chat->open) {
+    application->socket =
+      Socket_create(application->gui->chat->username, application->gui->chat->password);
+    application->gui->chat->socket = application->socket;
+  }
+  Message message = { 0 };
+  if (Queue_pop(&Queue_incoming, &message)) {
+    switch (message.type) {
+      case Message_chat:
+        Array_push(application->gui->chat->messages, strdup(message.chat.message));
+        printf("render message chat\n");
+        break;
+      case Message_login:
+        printf("message login\n");
+        if (application->playerId == PLAYER_UNSET) {
+          application->playerId = message.login.id;
+        }
+        application->players.players[message.login.id] = Player_Create(
+          0,
+          application->device,
+          application->queue,
+          application->depth.format,
+          application->globals.bind.groupLayout,
+          Vector3f_fill(0),
+          Vector3f_from(message.login.position));
+        application->targets[3 + message.login.id] =
+          (RenderTarget*)application->players.players[message.login.id];
+        application->players.count++;
+        char loginMessage[] = "Player 1 has logged in";
+        loginMessage[7] = message.login.id + '0';
+        Array_push(application->gui->chat->messages, strdup(loginMessage));
+        break;
+      case Message_move:
+        printf("message move\n");
+        Player_move(
+          application->players.players[message.login.id],
+          application->queue,
+          Vector3f_from(message.move.direction));
+        break;
+      default:
+        printf("unhandled message type: %i\n", message.type);
+        break;
+    }
+  }
   Application_Lightning_update(&application->lightning, application->queue);
   WGPUTextureView nextTexture = nextView(application->surface);
   if (!nextTexture) {
@@ -341,50 +388,6 @@ void Application_render(Application application[static 1]) {
       }
     }
     Application_gui_render(renderPass, &application->lightning, &application->camera);
-    if (!application->socket && application->gui->chat->open) {
-      application->socket =
-        Socket_create(application->gui->chat->username, application->gui->chat->password);
-      application->gui->chat->socket = application->socket;
-    }
-    Message message = { 0 };
-    if (Queue_pop(&Queue_incoming, &message)) {
-      switch (message.type) {
-        case Message_chat:
-          Array_push(application->gui->chat->messages, strdup(message.chat.message));
-          printf("render message chat\n");
-          break;
-        case Message_login:
-          printf("message login\n");
-          if (application->playerId == PLAYER_UNSET) {
-            application->playerId = message.login.id;
-          }
-          application->players.players[message.login.id] = Player_Create(
-            0,
-            application->device,
-            application->queue,
-            application->depth.format,
-            application->globals.bind.groupLayout,
-            Vector3f_fill(0),
-            Vector3f_from(message.login.position));
-          application->targets[3 + message.login.id] =
-            (RenderTarget*)application->players.players[message.login.id];
-          application->players.count++;
-          char loginMessage[] = "Player 1 has logged in";
-          loginMessage[7] = message.login.id + '0';
-          Array_push(application->gui->chat->messages, strdup(loginMessage));
-          break;
-        case Message_move:
-          printf("message move\n");
-          Player_move(
-            application->players.players[message.login.id],
-            application->queue,
-            Vector3f_from(message.move.direction));
-          break;
-        default:
-          printf("unhandled message type: %i\n", message.type);
-          break;
-      }
-    }
     wgpuRenderPassEncoderEnd(renderPass);
     wgpuTextureViewRelease(nextTexture);
     WGPUCommandBufferDescriptor cmdBufferDescriptor = {
